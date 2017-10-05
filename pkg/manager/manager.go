@@ -25,7 +25,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/brecode/vppshim/pkg/runtime"
+	"github.com/contiv/vpp/pkg/runtime"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/golang/glog"
 	"google.golang.org/grpc"
