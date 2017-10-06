@@ -74,6 +74,12 @@
   version = "v0.5.2"
 
 [[projects]]
+  branch = "contiv-cri"
+  name = "github.com/contiv/vpp"
+  packages = ["pkg/docker","pkg/manager","pkg/runtime","pkg/util/flags","pkg/util/logs"]
+  revision = "0f4d202ee0cf1d5c28c8994ac5ed103503803e0d"
+
+[[projects]]
   name = "github.com/coreos/etcd"
   packages = ["auth/authpb","client","clientv3","etcdserver/api/v3rpc/rpctypes","etcdserver/etcdserverpb","mvcc/mvccpb","pkg/pathutil","pkg/tlsutil","pkg/types"]
   revision = "0520cb9304cb2385f7e72b8bc02d6e4d3257158a"
@@ -557,6 +563,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "5dc7a2a238fda68b79c235f98c8cca7dc2a91d85745542e83d9c54253ca03287"
+  inputs-digest = "7c6d277bb3103c906d4f0f56e53711b1ca1b0ae4f0f7707582fe911e9381de2e"
   solver-name = "gps-cdcl"
   solver-version = 1

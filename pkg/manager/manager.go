@@ -1,32 +1,14 @@
-/*
-Copyright 2016 The Kubernetes Authors.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package manager
 
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"syscall"
 	"time"
 
-	"github.com/contiv/vpp/pkg/runtime"
-	"github.com/coreos/etcd/clientv3"
+	"github.com/brecode/vpp/pkg/runtime"
 	"github.com/golang/glog"
 	"google.golang.org/grpc"
 	kubeapi "k8s.io/kubernetes/pkg/kubelet/apis/cri/v1alpha1/runtime"
@@ -39,6 +21,7 @@ const (
 	contivshimRuntimeName = "contivshim"
 	version               = "0.1.0"
 	requestTimeout        = 5 * time.Second
+	dialTimeout           = 2 * time.Second
 )
 
 // ContivshimManager serves the kubelet runtime gRPC api which will be
@@ -106,18 +89,7 @@ func (s *ContivshimManager) Version(ctx context.Context, req *kubeapi.VersionReq
 // RunPodSandbox creates and start a hyper Pod.
 func (s *ContivshimManager) RunPodSandbox(ctx context.Context, req *kubeapi.RunPodSandboxRequest) (*kubeapi.RunPodSandboxResponse, error) {
 	glog.V(3).Infof("RunPodSandbox from runtime service with request %s", req.String())
-	//info related to PodSandbox
-	etcdClient, err := newEtcdClient(s.etcdEndpoint)
-	if err != nil {
-		return nil, err
-	}
-	defer etcdClient.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	_, err = etcdClient.Put(ctx, "sample_key", "sample_value")
-	cancel()
-	if err != nil {
-		log.Fatal(err)
-	}
+
 	resp, err := s.dockerRuntimeService.RunPodSandbox(req.Config)
 	if err != nil {
 		glog.Errorf("RunPodSandbox from dockershim failed: %v", err)
@@ -438,16 +410,4 @@ func (s *ContivshimManager) ListContainerStats(ctx context.Context, req *kubeapi
 		return nil, err
 	}
 	return &kubeapi.ListContainerStatsResponse{Stats: stats}, nil
-}
-
-func newEtcdClient(etcdEndpoint *string) (*clientv3.Client, error) {
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   []string{*etcdEndpoint},
-		DialTimeout: 5 * time.Second,
-	})
-	if err != nil {
-		glog.Errorf("Failed to create etcd client: %v", err)
-		return nil, err
-	}
-	return cli, nil
 }
