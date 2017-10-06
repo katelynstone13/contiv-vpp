@@ -1,12 +1,18 @@
 package manager
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"os"
 	"syscall"
 	"time"
+
+	context "golang.org/x/net/context"
+
+	"github.com/ligato/cn-infra/db/keyval"
+	"github.com/ligato/cn-infra/db/keyval/etcdv3"
+	"github.com/ligato/cn-infra/db/keyval/kvproto"
+	"github.com/ligato/cn-infra/logging/logroot"
 
 	"github.com/brecode/vpp/pkg/runtime"
 	"github.com/golang/glog"
@@ -89,7 +95,14 @@ func (s *ContivshimManager) Version(ctx context.Context, req *kubeapi.VersionReq
 // RunPodSandbox creates and start a hyper Pod.
 func (s *ContivshimManager) RunPodSandbox(ctx context.Context, req *kubeapi.RunPodSandboxRequest) (*kubeapi.RunPodSandboxResponse, error) {
 	glog.V(3).Infof("RunPodSandbox from runtime service with request %s", req.String())
-
+	cli, err := newEtcdClient(s.etcdEndpoint)
+	if err != nil {
+		glog.V(3).Infof("Could create and connect with etcd Client")
+		return nil, err
+	}
+	namespace := req.Config.Metadata.Namespace
+	reqvalue := &kubeapi.PodSandboxMetadata{Namespace: namespace}
+	cli.Put("conti/", reqvalue)
 	resp, err := s.dockerRuntimeService.RunPodSandbox(req.Config)
 	if err != nil {
 		glog.Errorf("RunPodSandbox from dockershim failed: %v", err)
@@ -410,4 +423,31 @@ func (s *ContivshimManager) ListContainerStats(ctx context.Context, req *kubeapi
 		return nil, err
 	}
 	return &kubeapi.ListContainerStatsResponse{Stats: stats}, nil
+}
+
+func newEtcdClient(etcdEndpoint *string) (keyval.ProtoBroker, error) {
+	config := &etcdv3.Config{
+		Endpoints:             []string{*etcdEndpoint},
+		DialTimeout:           1 * time.Second,
+		OpTimeout:             3 * time.Second,
+		InsecureTransport:     true,
+		InsecureSkipTLSVerify: true,
+		Certfile:              "",
+		Keyfile:               "",
+		CAfile:                "",
+	}
+	cfg, err := etcdv3.ConfigToClientv3(config)
+	if err != nil {
+		return nil, err
+	}
+
+	db, err := etcdv3.NewEtcdConnectionWithBytes(*cfg, logroot.StandardLogger())
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	// Initialize proto decorator.
+	protoDb := kvproto.NewProtoWrapper(db)
+	return protoDb, nil
 }
