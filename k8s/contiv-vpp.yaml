@@ -36,7 +36,7 @@ data:
     ipNeighborStaleThreshold: 4
     enablePacketTrace: false
     routeServiceCIDRToVPP: false
-    crdNodeConfigurationDisabled: true
+    crdNodeConfigurationDisabled: false
     ipamConfig:
       nodeInterconnectDHCP: false
       nodeInterconnectCIDR: 192.168.16.0/24
