@@ -1,0 +1,9 @@
+# Configuration for node in the cluster
+apiVersion: nodeconfig.contiv.vpp/v1
+kind: NodeConfig
+metadata:
+  name: ts1-host1
+spec:
+  mainVPPInterface:
+     interfaceName: "TenGigabitEthernet6/0/0"
+     ip: "192.168.16.2/24"
