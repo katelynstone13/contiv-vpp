@@ -22,6 +22,7 @@ import (
 	time "time"
 
 	versioned "github.com/contiv/vpp/plugins/crd/pkg/client/clientset/versioned"
+	bgpconfig "github.com/contiv/vpp/plugins/crd/pkg/client/informers/externalversions/bgpconfig"
 	internalinterfaces "github.com/contiv/vpp/plugins/crd/pkg/client/informers/externalversions/internalinterfaces"
 	nodeconfig "github.com/contiv/vpp/plugins/crd/pkg/client/informers/externalversions/nodeconfig"
 	telemetry "github.com/contiv/vpp/plugins/crd/pkg/client/informers/externalversions/telemetry"
@@ -171,8 +172,13 @@ type SharedInformerFactory interface {
 	ForResource(resource schema.GroupVersionResource) (GenericInformer, error)
 	WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 
+	Bgpconfig() bgpconfig.Interface
 	Nodeconfig() nodeconfig.Interface
 	Telemetry() telemetry.Interface
+}
+
+func (f *sharedInformerFactory) Bgpconfig() bgpconfig.Interface {
+	return bgpconfig.New(f, f.namespace, f.tweakListOptions)
 }
 
 func (f *sharedInformerFactory) Nodeconfig() nodeconfig.Interface {

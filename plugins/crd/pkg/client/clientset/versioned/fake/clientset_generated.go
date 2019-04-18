@@ -18,6 +18,8 @@ package fake
 
 import (
 	clientset "github.com/contiv/vpp/plugins/crd/pkg/client/clientset/versioned"
+	bgpconfigv1 "github.com/contiv/vpp/plugins/crd/pkg/client/clientset/versioned/typed/bgpconfig/v1"
+	fakebgpconfigv1 "github.com/contiv/vpp/plugins/crd/pkg/client/clientset/versioned/typed/bgpconfig/v1/fake"
 	nodeconfigv1 "github.com/contiv/vpp/plugins/crd/pkg/client/clientset/versioned/typed/nodeconfig/v1"
 	fakenodeconfigv1 "github.com/contiv/vpp/plugins/crd/pkg/client/clientset/versioned/typed/nodeconfig/v1/fake"
 	telemetryv1 "github.com/contiv/vpp/plugins/crd/pkg/client/clientset/versioned/typed/telemetry/v1"
@@ -70,6 +72,16 @@ func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 }
 
 var _ clientset.Interface = &Clientset{}
+
+// BgpconfigV1 retrieves the BgpconfigV1Client
+func (c *Clientset) BgpconfigV1() bgpconfigv1.BgpconfigV1Interface {
+	return &fakebgpconfigv1.FakeBgpconfigV1{Fake: &c.Fake}
+}
+
+// Bgpconfig retrieves the BgpconfigV1Client
+func (c *Clientset) Bgpconfig() bgpconfigv1.BgpconfigV1Interface {
+	return &fakebgpconfigv1.FakeBgpconfigV1{Fake: &c.Fake}
+}
 
 // NodeconfigV1 retrieves the NodeconfigV1Client
 func (c *Clientset) NodeconfigV1() nodeconfigv1.NodeconfigV1Interface {

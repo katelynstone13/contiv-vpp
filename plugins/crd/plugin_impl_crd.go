@@ -19,34 +19,33 @@ package crd
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
+	"sync"
+	"time"
+
 	"github.com/contiv/vpp/plugins/crd/api"
 	"github.com/contiv/vpp/plugins/crd/cache"
+	"github.com/contiv/vpp/plugins/crd/controller/bgpconfig"
 	"github.com/contiv/vpp/plugins/crd/controller/nodeconfig"
 	"github.com/contiv/vpp/plugins/crd/controller/telemetry"
+	crdClientSet "github.com/contiv/vpp/plugins/crd/pkg/client/clientset/versioned"
+	"github.com/contiv/vpp/plugins/crd/utils"
 	"github.com/contiv/vpp/plugins/crd/validator"
+	nodemodel "github.com/contiv/vpp/plugins/ksr/model/node"
+	podmodel "github.com/contiv/vpp/plugins/ksr/model/pod"
+	vppnodemodel "github.com/contiv/vpp/plugins/nodesync/vppnode"
 	"github.com/ligato/cn-infra/config"
 	"github.com/ligato/cn-infra/datasync"
 	"github.com/ligato/cn-infra/datasync/kvdbsync"
 	"github.com/ligato/cn-infra/datasync/resync"
 	"github.com/ligato/cn-infra/infra"
 	"github.com/ligato/cn-infra/logging"
+	"github.com/ligato/cn-infra/rpc/rest"
 	"github.com/ligato/cn-infra/utils/safeclose"
 	"github.com/namsral/flag"
-	"os"
-	"strconv"
-	"sync"
-	"time"
-
-	crdClientSet "github.com/contiv/vpp/plugins/crd/pkg/client/clientset/versioned"
-	nodemodel "github.com/contiv/vpp/plugins/ksr/model/node"
-	podmodel "github.com/contiv/vpp/plugins/ksr/model/pod"
-	vppnodemodel "github.com/contiv/vpp/plugins/nodesync/vppnode"
-
-	"k8s.io/client-go/tools/clientcmd"
-
-	"github.com/contiv/vpp/plugins/crd/utils"
-	"github.com/ligato/cn-infra/rpc/rest"
 	apiextcs "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 // Plugin implements NodeConfig and TelemetryReport CRDs.
@@ -70,9 +69,11 @@ type Plugin struct {
 
 	telemetryController  *telemetry.Controller
 	nodeConfigController *nodeconfig.Controller
-	cache                *cache.ContivTelemetryCache
-	processor            api.ContivTelemetryProcessor
-	verbose              bool
+	bgpConfigController  *bgpconfig.Controller
+
+	cache     *cache.ContivTelemetryCache
+	processor api.ContivTelemetryProcessor
+	verbose   bool
 }
 
 // Deps defines dependencies of CRD plugin.
@@ -189,9 +190,19 @@ func (p *Plugin) Init() error {
 		APIClient: apiclientset,
 	}
 
+	p.bgpConfigController = &bgpconfig.Controller{
+		Deps: bgpconfig.Deps{
+			Log:     p.Log.NewLogger("-bgpConfigController"),
+			Publish: p.Publish,
+		},
+		CrdClient: crdClient,
+		APIClient: apiclientset,
+	}
+
 	// Init and run the controllers
 	p.telemetryController.Init()
 	p.nodeConfigController.Init()
+	p.bgpConfigController.Init()
 
 	if p.verbose {
 		p.telemetryController.Log.SetLevel(logging.DebugLevel)
