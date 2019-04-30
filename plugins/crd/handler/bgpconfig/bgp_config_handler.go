@@ -19,6 +19,8 @@
 package bgpconfig
 
 import (
+	"github.com/contiv/vpp/plugins/crd/handler/nodeconfig/model"
+	"github.com/contiv/vpp/plugins/crd/pkg/apis/nodeconfig/v1"
 	"sync"
 
 	informers "github.com/contiv/vpp/plugins/crd/pkg/client/informers/externalversions/bgpconfig/v1"
@@ -103,4 +105,25 @@ func (h *Handler) ObjectDeleted(obj interface{}) {
 func (h *Handler) ObjectUpdated(oldObj, newObj interface{}) {
 	h.Log.Debugf("Object updated with value: %v", newObj)
 
+}
+
+
+
+// bgpConfigToProto converts bgp-config data from the Contiv's own CRD representation
+// into the corresponding protobuf-modelled data format.
+func (h *Handler) bgpConfigToProto(bgpConfig *v1.BgpConfig) *model.BgpConfig {
+	bgpConfigProto := &model.BgpConfig{}
+	/*bgpConfigProto.NodeName = nodeConfig.Name
+	if nodeConfig.Spec.MainVPPInterface.InterfaceName != "" {
+		nodeConfigProto.MainVppInterface = h.interfaceConfigToProto(nodeConfig.Spec.MainVPPInterface)
+	}
+	nodeConfigProto.Gateway = nodeConfig.Spec.Gateway
+	nodeConfigProto.StealInterface = nodeConfig.Spec.StealInterface
+	nodeConfigProto.NatExternalTraffic = nodeConfig.Spec.NatExternalTraffic
+	for _, otherNode := range nodeConfig.Spec.OtherVPPInterfaces {
+		nodeConfigProto.OtherVppInterfaces = append(nodeConfigProto.OtherVppInterfaces,
+			h.interfaceConfigToProto(otherNode))
+	}*/
+
+	return bgpConfigProto
 }
