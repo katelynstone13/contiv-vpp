@@ -83,9 +83,28 @@ type K8sToProtoConverter func(interface{}) (interface{}, string, bool)
 // DsItems defines the structure holding items listed from the data store.
 type DsItems map[string]interface{}
 
+
+
+
+
 // Init initializes handler configuration
 // BgpConfig Handler will be taking action on resource CRUD
 func (h *Handler) Init() error {
+
+	ksrPrefix := h.Publish.ServiceLabel.GetAgentPrefix()
+	h.broker = h.Publish.Deps.KvPlugin.NewBroker(ksrPrefix)
+	h.syncStopCh = make(chan bool, 1)
+	h.prefix = "/vnf-agent/vpp1/config/bgp/v1/"
+
+	h.kpc = func(obj interface{}) (interface{}, string, bool) {
+		bgpConfig, ok := obj.(*v1.BgpConfig)
+		if !ok {
+			h.Log.Warn("Failed to cast newly created node-config object")
+			return nil, "", false
+		}
+		return h.bgpConfigToProto(bgpConfig), "global", true
+	}
+
 	return nil
 }
 
