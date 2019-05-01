@@ -107,8 +107,6 @@ func (h *Handler) ObjectUpdated(oldObj, newObj interface{}) {
 
 }
 
-
-
 // bgpConfigToProto converts bgp-config data from the Contiv's own CRD representation
 // into the corresponding protobuf-modelled data format.
 func (h *Handler) bgpConfigToProto(bgpConfig *v1.BgpConfig) *model.BgpConf {
