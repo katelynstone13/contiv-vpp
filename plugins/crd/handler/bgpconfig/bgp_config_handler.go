@@ -98,6 +98,18 @@ func (h *Handler) ObjectCreated(obj interface{}) {
 // ObjectDeleted is called when a CRD object is deleted
 func (h *Handler) ObjectDeleted(obj interface{}) {
 	h.Log.Debugf("Object deleted with value: %v", obj)
+	bgpConfig, ok := obj.(*v1.BgpConfig)
+	if !ok {
+		h.Log.Warn("Failed to cast delete event")
+		return
+	}
+
+	bgpConfigProto := h.bgpConfigToProto(bgpConfig)
+	_, err := h.Publish.Delete("global")
+	if err != nil {
+		h.Log.WithField("rwErr", err).
+			Warnf("node config failed to delete item from data store: %v", bgpConfigProto)
+	}
 
 }
 
