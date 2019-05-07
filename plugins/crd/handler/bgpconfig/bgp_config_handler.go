@@ -112,6 +112,18 @@ func (h *Handler) Init() error {
 func (h *Handler) ObjectCreated(obj interface{}) {
 	h.Log.Debugf("Object created with value: %v", obj)
 
+	//h.Log.Debugf("Object created with value: %v", obj)
+	bgpConfig, ok := obj.(*v1.BgpConfig)
+	if !ok {
+		h.Log.Warn("Failed to cast newly created bgp-config object")
+		return
+	}
+	bgpConfigProto := h.bgpConfigToProto(bgpConfig)
+	err := h.Publish.Put("global", bgpConfigProto)
+	if err != nil {
+		h.dsSynced = false
+		h.startDataStoreResync()
+	}
 }
 
 // ObjectDeleted is called when a CRD object is deleted
@@ -122,14 +134,12 @@ func (h *Handler) ObjectDeleted(obj interface{}) {
 		h.Log.Warn("Failed to cast delete event")
 		return
 	}
-
 	bgpConfigProto := h.bgpConfigToProto(bgpConfig)
 	_, err := h.Publish.Delete("global")
 	if err != nil {
 		h.Log.WithField("rwErr", err).
-			Warnf("node config failed to delete item from data store: %v", bgpConfigProto)
+			Warnf("bgp config failed to delete item from data store: %v", bgpConfigProto)
 	}
-
 }
 
 // ObjectUpdated is called when a CRD object is updated
