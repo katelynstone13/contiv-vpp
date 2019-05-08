@@ -102,7 +102,7 @@ func (h *Handler) Init() error {
 			h.Log.Warn("Failed to cast newly created node-config object")
 			return nil, "", false
 		}
-		return h.bgpConfigToProto(bgpConfig), "global", true
+		return h.bgpConfigToProto(bgpConfig), "", true
 	}
 
 	return nil
