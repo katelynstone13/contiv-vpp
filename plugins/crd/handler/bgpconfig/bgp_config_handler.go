@@ -150,7 +150,7 @@ func (h *Handler) bgpPeersConfigToProto(bgpPeersConfig *v1.PeerConf) *model.Peer
 	bgpPeersConfigProto.PeerAs = bgpPeersConfig.PeerAs
 	bgpPeersConfigProto.PeerGroup = bgpPeersConfig.PeerGroup
 	bgpPeersConfigProto.PeerType = bgpPeersConfig.PeerType
-	//bgpPeersConfigProto.RemovePrivateAs = bgpPeersConfig.RemovePrivateAs
+	bgpPeersConfigProto.RemovePrivateAutoSystem = bgpPeersConfig.RemovePrivateAs
 	bgpPeersConfigProto.RouteFlapDamping = bgpPeersConfig.RouteFlapDamping
 	bgpPeersConfigProto.SendCommunity = bgpPeersConfig.SendCommunity
 	bgpPeersConfigProto.NeighborInterface = bgpPeersConfig.NeighborInterface
