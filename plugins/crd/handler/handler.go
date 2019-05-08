@@ -19,8 +19,6 @@
 package bgpconfig
 
 import (
-	"github.com/contiv/contiv-vpp/plugins/crd/handler/bgpconfig/model"
-	"github.com/contiv/contiv-vpp/plugins/crd/pkg/apis/bgpconfig/v1"
 	"sync"
 
 	informers "github.com/contiv/contiv-vpp/plugins/crd/pkg/client/informers/externalversions/bgpconfig/v1"
@@ -90,47 +88,12 @@ type DsItems map[string]interface{}
 // Init initializes handler configuration
 // BgpConfig Handler will be taking action on resource CRUD
 func (h *Handler) Init() error {
-
-	ksrPrefix := h.Publish.ServiceLabel.GetAgentPrefix()
-	h.broker = h.Publish.Deps.KvPlugin.NewBroker(ksrPrefix)
-	h.syncStopCh = make(chan bool, 1)
-	h.prefix = "/vnf-agent/vpp1/config/bgp/v1/"
-
-	h.kpc = func(obj interface{}) (interface{}, string, bool) {
-		bgpConfig, ok := obj.(*v1.BgpConfig)
-		if !ok {
-			h.Log.Warn("Failed to cast newly created node-config object")
-			return nil, "", false
-		}
-		return h.bgpConfigToProto(bgpConfig), "global", true
-	}
-
 	return nil
 }
 
 // ObjectCreated is called when a CRD object is created
 func (h *Handler) ObjectCreated(obj interface{}) {
 	h.Log.Debugf("Object created with value: %v", obj)
-	bgpConfig, ok := obj.(*v1.BgpConfig)
-	if !ok {
-		h.Log.Warn("Failed to cast newly created bgp-config object")
-		return
-	}
-	globalConfigProto := h.bgpGlobalConfigToProto(bgpConfig.Spec.BGPGlobal)
-	err := h.Publish.Put("global", globalConfigProto)
-	h.Log.Errorf("error publish.put global : %v" , err)
-	for _, nextPeer := range bgpConfig.Spec.Peers {
-		peerProto := h.bgpPeersConfigToProto(nextPeer)
-		err := h.Publish.Put("peers/" + nextPeer.Name, peerProto)
-		h.Log.Errorf("error publish.put peer : %v" , err)
-	}
-	/*
-	if err != nil {
-		h.dsSynced = false
-		h.startDataStoreResync()
-	}
-	*/
-
 }
 
 // ObjectDeleted is called when a CRD object is deleted
@@ -145,49 +108,3 @@ func (h *Handler) ObjectUpdated(oldObj, newObj interface{}) {
 
 }
 
-// bgpConfigToProto converts bgp-config data from the Contiv's own CRD representation
-// into the corresponding protobuf-modelled data format.
-func (h *Handler) bgpConfigToProto(bgpConfig *v1.BgpConfig) *model.BgpConf {
-	bgpConfigProto := &model.BgpConf{}
-	bgpConfigProto.Global = h.bgpGlobalConfigToProto(v1.GlobalConf{})
-
-	for _, nextPeer := range bgpConfig.Spec.Peers {
-		bgpConfigProto.Peers = append(bgpConfigProto.Peers,
-			h.bgpPeersConfigToProto(nextPeer))
-	}
-
-	return bgpConfigProto
-}
-
-func (h *Handler) bgpPeersConfigToProto(bgpPeersConfig v1.PeerConf) *model.PeerConf {
-	bgpPeersConfigProto := &model.PeerConf{}
-	bgpPeersConfigProto.Name = bgpPeersConfig.Name
-	bgpPeersConfigProto.AuthPassword = bgpPeersConfig.AuthPassword
-	bgpPeersConfigProto.Description = bgpPeersConfig.Description
-	bgpPeersConfigProto.LocalAs = bgpPeersConfig.LocalAs
-	bgpPeersConfigProto.NeighborAddress = bgpPeersConfig.NeighborAddress
-	bgpPeersConfigProto.PeerAs = bgpPeersConfig.PeerAs
-	bgpPeersConfigProto.PeerGroup = bgpPeersConfig.PeerGroup
-	bgpPeersConfigProto.PeerType = bgpPeersConfig.PeerType
-	//bgpPeersConfigProto.RemovePrivateAs = bgpPeersConfig.RemovePrivateAs
-	bgpPeersConfigProto.RouteFlapDamping = bgpPeersConfig.RouteFlapDamping
-	bgpPeersConfigProto.SendCommunity = bgpPeersConfig.SendCommunity
-	bgpPeersConfigProto.NeighborInterface = bgpPeersConfig.NeighborInterface
-	bgpPeersConfigProto.Vrf = bgpPeersConfig.Vrf
-	bgpPeersConfigProto.AllowOwnAs = bgpPeersConfig.AllowOwnAs
-	bgpPeersConfigProto.ReplacePeerAs = bgpPeersConfig.ReplacePeerAs
-	bgpPeersConfigProto.AdminDown = bgpPeersConfig.AdminDown
-
-	return bgpPeersConfigProto
-}
-
-func (h *Handler) bgpGlobalConfigToProto(bgpGlobalConfig v1.GlobalConf) *model.GlobalConf {
-	bgpGlobalConfigProto := &model.GlobalConf{}
-	bgpGlobalConfigProto.As = bgpGlobalConfig.As
-	bgpGlobalConfigProto.Families = bgpGlobalConfig.Families
-	bgpGlobalConfigProto.ListenAddresses = bgpGlobalConfig.ListenAddresses
-	bgpGlobalConfigProto.RouterId = bgpGlobalConfig.RouterId
-	bgpGlobalConfigProto.UseMultiplePaths = bgpGlobalConfig.UseMultiplePaths
-
-	return bgpGlobalConfigProto
-}

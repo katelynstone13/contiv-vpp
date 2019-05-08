@@ -111,6 +111,25 @@ func (h *Handler) Init() error {
 // ObjectCreated is called when a CRD object is created
 func (h *Handler) ObjectCreated(obj interface{}) {
 	h.Log.Debugf("Object created with value: %v", obj)
+	bgpConfig, ok := obj.(*v1.BgpConfig)
+	if !ok {
+		h.Log.Warn("Failed to cast newly created bgp-config object")
+		return
+	}
+	globalConfigProto := h.bgpGlobalConfigToProto(bgpConfig.Spec.BGPGlobal)
+	err := h.Publish.Put("global", globalConfigProto)
+	h.Log.Errorf("error publish.put global : %v" , err)
+	for _, nextPeer := range bgpConfig.Spec.Peers {
+		peerProto := h.bgpPeersConfigToProto(nextPeer)
+		err := h.Publish.Put("peers/" + nextPeer.Name, peerProto)
+		h.Log.Errorf("error publish.put peer : %v" , err)
+	}
+	/*
+	if err != nil {
+		h.dsSynced = false
+		h.startDataStoreResync()
+	}
+	*/
 
 }
 
@@ -125,22 +144,21 @@ func (h *Handler) ObjectUpdated(oldObj, newObj interface{}) {
 	h.Log.Debugf("Object updated with value: %v", newObj)
 
 }
-
-// bgpConfigToProto converts bgp-config data from the Contiv's own CRD representation
+/ bgpConfigToProto converts bgp-config data from the Contiv's own CRD representation
 // into the corresponding protobuf-modelled data format.
 func (h *Handler) bgpConfigToProto(bgpConfig *v1.BgpConfig) *model.BgpConf {
 	bgpConfigProto := &model.BgpConf{}
-	bgpConfigProto.Global = h.bgpGlobalConfigToProto(&v1.GlobalConf{})
+	bgpConfigProto.Global = h.bgpGlobalConfigToProto(v1.GlobalConf{})
 
 	for _, nextPeer := range bgpConfig.Spec.Peers {
 		bgpConfigProto.Peers = append(bgpConfigProto.Peers,
-			h.bgpPeersConfigToProto(&nextPeer))
+			h.bgpPeersConfigToProto(nextPeer))
 	}
 
 	return bgpConfigProto
 }
 
-func (h *Handler) bgpPeersConfigToProto(bgpPeersConfig *v1.PeerConf) *model.PeerConf {
+func (h *Handler) bgpPeersConfigToProto(bgpPeersConfig v1.PeerConf) *model.PeerConf {
 	bgpPeersConfigProto := &model.PeerConf{}
 	bgpPeersConfigProto.Name = bgpPeersConfig.Name
 	bgpPeersConfigProto.AuthPassword = bgpPeersConfig.AuthPassword
@@ -162,7 +180,7 @@ func (h *Handler) bgpPeersConfigToProto(bgpPeersConfig *v1.PeerConf) *model.Peer
 	return bgpPeersConfigProto
 }
 
-func (h *Handler) bgpGlobalConfigToProto(bgpGlobalConfig *v1.GlobalConf) *model.GlobalConf {
+func (h *Handler) bgpGlobalConfigToProto(bgpGlobalConfig v1.GlobalConf) *model.GlobalConf {
 	bgpGlobalConfigProto := &model.GlobalConf{}
 	bgpGlobalConfigProto.As = bgpGlobalConfig.As
 	bgpGlobalConfigProto.Families = bgpGlobalConfig.Families
