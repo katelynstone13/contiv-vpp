@@ -161,7 +161,8 @@ func (h *Handler) ObjectUpdated(oldObj, newObj interface{}) {
 // into the corresponding protobuf-modelled data format.
 func (h *Handler) bgpConfigToProto(bgpConfig *v1.BgpConfig) *model.BgpConf {
 	bgpConfigProto := &model.BgpConf{}
-	bgpConfigProto.Global = h.bgpGlobalConfigToProto(v1.GlobalConf{})
+
+	bgpConfigProto.Global = h.bgpGlobalConfigToProto(bgpConfig.Spec.BGPGlobal)
 
 	for _, nextPeer := range bgpConfig.Spec.Peers {
 		bgpConfigProto.Peers = append(bgpConfigProto.Peers,
@@ -181,7 +182,7 @@ func (h *Handler) bgpPeersConfigToProto(bgpPeersConfig v1.PeerConf) *model.PeerC
 	bgpPeersConfigProto.PeerAs = bgpPeersConfig.PeerAs
 	bgpPeersConfigProto.PeerGroup = bgpPeersConfig.PeerGroup
 	bgpPeersConfigProto.PeerType = bgpPeersConfig.PeerType
-	//bgpPeersConfigProto.RemovePrivateAs = bgpPeersConfig.RemovePrivateAs
+	bgpPeersConfigProto.RemovePrivateAs = model.PeerConf_RemovePrivateAs(bgpPeersConfig.RemovePrivateAs)
 	bgpPeersConfigProto.RouteFlapDamping = bgpPeersConfig.RouteFlapDamping
 	bgpPeersConfigProto.SendCommunity = bgpPeersConfig.SendCommunity
 	bgpPeersConfigProto.NeighborInterface = bgpPeersConfig.NeighborInterface
