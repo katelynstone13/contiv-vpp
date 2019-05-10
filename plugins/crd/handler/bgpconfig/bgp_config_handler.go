@@ -21,6 +21,7 @@ package bgpconfig
 import (
 	"github.com/contiv/vpp/plugins/crd/handler/bgpconfig/model"
 	"github.com/contiv/vpp/plugins/crd/pkg/apis/bgpconfig/v1"
+	"reflect"
 	"sync"
 
 	informers "github.com/contiv/vpp/plugins/crd/pkg/client/informers/externalversions/bgpconfig/v1"
@@ -90,11 +91,10 @@ type DsItems map[string]interface{}
 // Init initializes handler configuration
 // BgpConfig Handler will be taking action on resource CRUD
 func (h *Handler) Init() error {
-
 	ksrPrefix := h.Publish.ServiceLabel.GetAgentPrefix()
 	h.broker = h.Publish.Deps.KvPlugin.NewBroker(ksrPrefix)
 	h.syncStopCh = make(chan bool, 1)
-	h.prefix = "/vnf-agent/vpp1/config/bgp/v1/"
+	h.prefix = model.KeyPrefix()
 
 	h.kpc = func(obj interface{}) (interface{}, string, bool) {
 		bgpConfig, ok := obj.(*v1.BgpConfig)
@@ -102,9 +102,8 @@ func (h *Handler) Init() error {
 			h.Log.Warn("Failed to cast newly created node-config object")
 			return nil, "", false
 		}
-		return h.bgpConfigToProto(bgpConfig), "", true
+		return h.bgpConfigToProto(bgpConfig), model.Key(bgpConfig.Name), true
 	}
-
 	return nil
 }
 
@@ -117,21 +116,21 @@ func (h *Handler) ObjectCreated(obj interface{}) {
 		return
 	}
 	globalConfigProto := h.bgpGlobalConfigToProto(bgpConfig.Spec.BGPGlobal)
-	err := h.Publish.Put("global", globalConfigProto)
+	err := h.Publish.Put(model.Key("global"), globalConfigProto)
 	if err != nil {
 		h.Log.Errorf("error publish.put global : %v", err)
 	}
 	for _, nextPeer := range bgpConfig.Spec.Peers {
 		peerProto := h.bgpPeersConfigToProto(nextPeer)
-		err := h.Publish.Put("peers/" + nextPeer.Name, peerProto)
-		h.Log.Errorf("error publish.put peer : %v" , err)
+		err := h.Publish.Put(model.Key("peers/") + nextPeer.Name, peerProto)
+		h.Log.Errorf("error publish.put peers : %v" , err)
 	}
 	/*
 	if err != nil {
 		h.dsSynced = false
 		h.startDataStoreResync()
-	}
-	*/
+	}*/
+
 
 }
 
@@ -142,20 +141,38 @@ func (h *Handler) ObjectDeleted(obj interface{}) {
 		h.Log.Warn("Failed to cast newly created bgp-config object")
 		return
 	}
-	_, err := h.Publish.Delete("global")
+	_, err := h.Publish.Delete(model.Key("global"))
 	if err != nil {
 		h.Log.Errorf("error publish.put global : %v", err)
 	}
 	for _, nextPeer := range bgpConfig.Spec.Peers {
-		_, err := h.Publish.Delete("peers/" + nextPeer.Name)
+		_, err := h.Publish.Delete(model.Key("peers/") + nextPeer.Name)
 		h.Log.Errorf("error publish.put peer : %v" , err)
 	}
 }
 
 // ObjectUpdated is called when a CRD object is updated
 func (h *Handler) ObjectUpdated(oldObj, newObj interface{}) {
-	h.Log.Debugf("Object updated with value: %v", newObj)
+	/*h.Log.Debugf("Object updated with value: %v", newObj)
+	if !reflect.DeepEqual(oldObj, newObj) {
 
+		h.Log.Debugf("bgp config updating item in data store, %v", newObj)
+		bgpConfig, ok := newObj.(*v1.BgpConfig)
+		if !ok {
+			h.Log.Warn("Failed to cast delete event")
+			return
+		}
+
+		nodeConfigProto := h.nodeConfigToProto(nodeConfig)
+		err := h.Publish.Put(model.Key(nodeConfig.GetName()), nodeConfigProto)
+		if err != nil {
+			h.Log.WithField("rwErr", err).
+				Warnf("node config failed to update item in data store %v", nodeConfigProto)
+			h.dsSynced = false
+			h.startDataStoreResync()
+			return
+		}
+	}*/
 }
 // bgpConfigToProto converts bgp-config data from the Contiv's own CRD representation
 // into the corresponding protobuf-modelled data format.
