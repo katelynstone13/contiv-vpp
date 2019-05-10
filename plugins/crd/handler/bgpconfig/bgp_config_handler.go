@@ -116,13 +116,13 @@ func (h *Handler) ObjectCreated(obj interface{}) {
 		return
 	}
 	globalConfigProto := h.bgpGlobalConfigToProto(bgpConfig.Spec.BGPGlobal)
-	err := h.Publish.Put(model.Key("global"), globalConfigProto)
+	err := h.Publish.Put(model.Key(bgpConfig.Name) + "/global", globalConfigProto)
 	if err != nil {
 		h.Log.Errorf("error publish.put global : %v", err)
 	}
 	for _, nextPeer := range bgpConfig.Spec.Peers {
 		peerProto := h.bgpPeersConfigToProto(nextPeer)
-		err := h.Publish.Put(model.Key("peers/") + nextPeer.Name, peerProto)
+		err := h.Publish.Put(model.Key(bgpConfig.Name) + "/peers/" + nextPeer.Name, peerProto)
 		h.Log.Errorf("error publish.put peers : %v" , err)
 	}
 	/*
@@ -146,7 +146,7 @@ func (h *Handler) ObjectDeleted(obj interface{}) {
 		h.Log.Errorf("error publish.put global : %v", err)
 	}
 	for _, nextPeer := range bgpConfig.Spec.Peers {
-		_, err := h.Publish.Delete(model.Key("peers/") + nextPeer.Name)
+		_, err := h.Publish.Delete(model.Key(bgpConfig.Name) + "/peers/" + nextPeer.Name)
 		h.Log.Errorf("error publish.put peer : %v" , err)
 	}
 }
