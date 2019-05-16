@@ -20,8 +20,8 @@ package bgpconfig
 
 import (
 	"fmt"
-	"github.com/contiv/contiv/plugins/crd/handler/bgpconfig/model"
-	"github.com/contiv/contiv/plugins/crd/pkg/apis/bgpconfig/v1"
+	"github.com/contiv/vpp/plugins/crd/handler/bgpconfig/model"
+	"github.com/contiv/vpp/plugins/crd/pkg/apis/bgpconfig/v1"
 	"reflect"
 	"sync"
 	"time"
@@ -356,12 +356,14 @@ func (h *Handler) markAndSweep(dsItems DsItems) error {
 			if err != nil {
 				return fmt.Errorf("failed to get '%s' from k8s cache", key)
 			}
+			/*
 			if key == model.Key(h.name) + "/global" {
         			k8sProtoObj = h.bgpGlobalConfigToProto(k8sProtoObj)
       			}
       			else {
         			k8sProtoObj = h.bgpPeersConfigToProto(k8sProtoObj)
       			}
+			*/
 			dsProtoObj, exists := dsItems[key]
 			if exists {
 				if !reflect.DeepEqual(k8sProtoObj, dsProtoObj) {
