@@ -20,8 +20,8 @@ package bgpconfig
 
 import (
 	"fmt"
-	"github.com/contiv/contiv-vpp/plugins/crd/handler/bgpconfig/model"
-	"github.com/contiv/contiv-vpp/plugins/crd/pkg/apis/bgpconfig/v1"
+	"github.com/contiv/contiv/plugins/crd/handler/bgpconfig/model"
+	"github.com/contiv/contiv/plugins/crd/pkg/apis/bgpconfig/v1"
 	"reflect"
 	"sync"
 	"time"
