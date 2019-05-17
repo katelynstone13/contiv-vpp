@@ -1,0 +1,15 @@
+# Configuration for bgpConfig in the cluster
+apiVersion: bgpconfig.contiv.vpp/v1
+kind: BgpConfig
+metadata:
+  name: configName
+spec:
+  BGPGlobal:
+    As: 65001
+    RouterId: 10.20.0.2
+    ListenPort: -1
+  Peers:
+    PeerConf:
+      Name: Gateway
+      PeerAs: 65001
+      NeighborAddress: 10.20.0.100
