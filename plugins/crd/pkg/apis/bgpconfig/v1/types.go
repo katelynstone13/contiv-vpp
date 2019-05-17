@@ -15,7 +15,7 @@
 package v1
 
 import (
-	"github.com/contiv/contiv-vpp/plugins/crd/pkg/apis/bgpconfig"
+	"github.com/contiv/vpp/plugins/crd/pkg/apis/bgpconfig"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

@@ -229,6 +229,7 @@ func (h *Handler) bgpGlobalConfigToProto(bgpGlobalConfig v1.GlobalConf) *model.G
 }
 
 // listDataStoreItems gets all items of a given type from Etcd
+// Pass this to Mark & Sweep
 func (h *Handler) listDataStoreItems() (DsItems, error) {
 	dsDump := make(map[string]interface{})
 
@@ -240,7 +241,7 @@ func (h *Handler) listDataStoreItems() (DsItems, error) {
 	// Retrieve all data items for a given data type (i.e. key prefix)
 	kvi, err := h.broker.ListValues(model.Key(h.name) + "/peers/")
 	if err != nil {
-		return dsDump, fmt.Errorf("node config handler can not get kv iterator, error: %s", err)
+		return dsDump, fmt.Errorf("bgp config handler can not get kv iterator, error: %s", err)
 	}
 
 	// Put the retrieved items to a map where an item can be addressed
@@ -255,7 +256,7 @@ func (h *Handler) listDataStoreItems() (DsItems, error) {
 		err := kv.GetValue(item)
 		if err != nil {
 			h.Log.WithField("Key", key).
-				Errorf("node config handle failed to get object from data store, error %s", err)
+				Errorf("bgp config handler failed to get PeerConf from data store, error %s", err)
 		} else {
 			dsDump[key] = item
 		}
@@ -292,10 +293,10 @@ func (h *Handler) startDataStoreResync() {
 					// Try to resync the data store with the K8s cache
 					err := h.syncDataStoreWithK8sCache(dsItemsCopy)
 					if err == nil {
-						h.Log.Info("node config data sync done")
+						h.Log.Info("bgp config data sync done")
 						break Loop
 					}
-					h.Log.Infof("node config data sync: syncDataStoreWithK8sCache failed, '%s'", err)
+					h.Log.Infof("bgp config data sync: syncDataStoreWithK8sCache failed, '%s'", err)
 
 					// Wait before attempting the resync again
 					if abort := h.dataStoreResyncWait(&timeout); abort == true {
@@ -303,7 +304,7 @@ func (h *Handler) startDataStoreResync() {
 					}
 				}
 			}
-			h.Log.Infof("node config data sync: error listing data store items, '%s'", err)
+			h.Log.Infof("bgp config data sync: error listing data store items, '%s'", err)
 
 			// Wait before attempting to list data store items again
 			if abort := h.dataStoreResyncWait(&timeout); abort == true {
@@ -334,7 +335,7 @@ func (h *Handler) dataStoreResyncWait(timeout *time.Duration) bool {
 	}
 }
 
-// syncDataStoreWithK8sCache syncs data in etcd with data in node config crd in
+// syncDataStoreWithK8sCache syncs data in etcd with data in bgp config crd in
 // k8s cache. Returns ok if reconciliation is successful, error otherwise.
 func (h *Handler) syncDataStoreWithK8sCache(dsItems DsItems) error {
 	h.dsMutex.Lock()
@@ -342,33 +343,51 @@ func (h *Handler) syncDataStoreWithK8sCache(dsItems DsItems) error {
 
 	// don't do anything unless the K8s cache itself is synced
 	if !h.ControllerInformer.Informer().HasSynced() {
-		return fmt.Errorf("node config data sync: k8sController not synced")
+		return fmt.Errorf("bgp config data sync: k8sController not synced")
 	}
 
 	// Reconcile data store with k8s cache using mark-and-sweep
 	err := h.markAndSweep(dsItems)
 	if err != nil {
-		return fmt.Errorf("node config data sync: mark-and-sweep failed, '%s'", err)
+		return fmt.Errorf("bgp config data sync: mark-and-sweep failed, '%s'", err)
 	}
 
 	h.dsSynced = true
 	return nil
 }
 
+// markAndSweep performs the mark-and-sweep reconciliation between data in
+// the k8s cache and data in Etcd. This function must be called with dsMutex
+// locked, because it manipulates dsFlag and because no updates to the data
+// store can happen while the resync is in progress.
+//
+// dsItems is a map containing a snapshot of the data store. This function
+// will delete all elements from this map. oc is a function converting the
+// K8s policy data structure to the protobuf policy data structure.
+//
+// If data can not be written into the data store, mark-and-sweep is aborted
+// and the function returns an error.
 func (h *Handler) markAndSweep(dsItems DsItems) error {
 	for _, key := range h.ControllerInformer.Informer().GetStore().ListKeys() {
 			k8sProtoObj, _, err := h.ControllerInformer.Informer().GetStore().GetByKey(key)
 			if err != nil {
 				return fmt.Errorf("failed to get '%s' from k8s cache", key)
 			}
-			/*
+
 			if key == model.Key(h.name) + "/global" {
-        			k8sProtoObj = h.bgpGlobalConfigToProto(k8sProtoObj)
-      			}
-      			else {
-        			k8sProtoObj = h.bgpPeersConfigToProto(k8sProtoObj)
-      			}
-			*/
+				k8sConfig, ok := k8sProtoObj.(v1.GlobalConf)
+				if !ok {
+					h.Log.Warn("Failed to cast newly created GlobalConf object")
+				}
+				k8sProtoObj = h.bgpGlobalConfigToProto(k8sConfig)
+				} else {
+					k8sConfig, ok := k8sProtoObj.(v1.PeerConf)
+					if !ok {
+						h.Log.Warn("Failed to cast newly created PeerConf object")
+					}
+        			k8sProtoObj = h.bgpPeersConfigToProto(k8sConfig)
+        			}
+
 			dsProtoObj, exists := dsItems[key]
 			if exists {
 				if !reflect.DeepEqual(k8sProtoObj, dsProtoObj) {
