@@ -26,7 +26,7 @@ import (
 	"sync"
 	"time"
 
-	informers "github.com/contiv/contiv-vpp/plugins/crd/pkg/client/informers/externalversions/bgpconfig/v1"
+	informers "github.com/contiv/vpp/plugins/crd/pkg/client/informers/externalversions/bgpconfig/v1"
 	"github.com/gogo/protobuf/proto"
 	"github.com/ligato/cn-infra/datasync"
 	"github.com/ligato/cn-infra/datasync/kvdbsync"
