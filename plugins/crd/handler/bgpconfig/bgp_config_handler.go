@@ -20,12 +20,12 @@ package bgpconfig
 
 import (
 	"fmt"
-	"github.com/contiv/vpp/plugins/crd/handler/bgpconfig/model"
-	"github.com/contiv/vpp/plugins/crd/pkg/apis/bgpconfig/v1"
 	"reflect"
 	"sync"
 	"time"
 
+	"github.com/contiv/vpp/plugins/crd/handler/bgpconfig/model"
+	"github.com/contiv/vpp/plugins/crd/pkg/apis/bgpconfig/v1"
 	informers "github.com/contiv/vpp/plugins/crd/pkg/client/informers/externalversions/bgpconfig/v1"
 	"github.com/gogo/protobuf/proto"
 	"github.com/ligato/cn-infra/datasync"
@@ -52,7 +52,7 @@ type Handler struct {
 	//kpc    K8sToProtoConverter
 
 	syncStopCh chan bool
-	name string
+	name       string
 }
 
 // Deps defines dependencies for BgpConfig CRD Handler.
@@ -87,26 +87,24 @@ type K8sToProtoConverter func(interface{}) (interface{}, string, bool)
 // DsItems defines the structure holding items listed from the data store.
 type DsItems map[string]interface{}
 
-
-
-
-
 // Init initializes handler configuration
 // BgpConfig Handler will be taking action on resource CRUD
 func (h *Handler) Init() error {
 	ksrPrefix := h.Publish.ServiceLabel.GetAgentPrefix()
 	h.broker = h.Publish.Deps.KvPlugin.NewBroker(ksrPrefix)
+
 	h.syncStopCh = make(chan bool, 1)
 	h.prefix = model.KeyPrefix()
+
 	/*
-	h.kpc = func(obj interface{}) (interface{}, string, bool) {
-		bgpConfig, ok := obj.(*v1.BgpConfig)
-		if !ok {
-			h.Log.Warn("Failed to cast newly created node-config object")
-			return nil, "", false
+		h.kpc = func(obj interface{}) (interface{}, string, bool) {
+			bgpConfig, ok := obj.(*v1.BgpConfig)
+			if !ok {
+				h.Log.Warn("Failed to cast newly created node-config object")
+				return nil, "", false
+			}
+			return h.bgpConfigToProto(bgpConfig), model.Key(bgpConfig.Name), true
 		}
-		return h.bgpConfigToProto(bgpConfig), model.Key(bgpConfig.Name), true
-	}
 	*/
 	return nil
 }
@@ -117,7 +115,6 @@ func (h *Handler) ObjectCreated(obj interface{}) {
 		h.Log.Errorf("Only one config at a time. Delete or update %s to use this config", h.name)
 		return
 	}
-	h.Log.Debugf("Object created with value: %v", obj)
 	bgpConfig, ok := obj.(*v1.BgpConfig)
 	if !ok {
 		h.Log.Warn("Failed to cast newly created bgp-config object")
@@ -126,7 +123,7 @@ func (h *Handler) ObjectCreated(obj interface{}) {
 
 	//Put global undder its prefix
 	globalConfigProto := h.bgpGlobalConfigToProto(bgpConfig.Spec.BGPGlobal)
-	err := h.Publish.Put(model.Key(bgpConfig.Name) + "/global", globalConfigProto)
+	err := h.Publish.Put(model.Key(bgpConfig.Name)+"/global", globalConfigProto)
 	if err != nil {
 		h.Log.Errorf("error publish.put global : %v", err)
 		h.dsSynced = false
@@ -145,7 +142,6 @@ func (h *Handler) ObjectCreated(obj interface{}) {
 	}
 
 	h.name = bgpConfig.Name
-
 
 }
 
@@ -179,6 +175,7 @@ func (h *Handler) ObjectUpdated(oldObj, newObj interface{}) {
 	}
 
 }
+
 // bgpConfigToProto converts bgp-config data from the Contiv's own CRD representation
 // into the corresponding protobuf-modelled data format.
 func (h *Handler) bgpConfigToProto(bgpConfig *v1.BgpConfig) *model.BgpConf {
@@ -235,8 +232,8 @@ func (h *Handler) listDataStoreItems() (DsItems, error) {
 
 	//add global to dsDump
 	global := &model.GlobalConf{}
-	h.broker.GetValue(model.Key(h.name) + "/global",global )
-	dsDump[model.Key(h.name) + "/global"] = global
+	h.broker.GetValue(model.Key(h.name)+"/global", global)
+	dsDump[model.Key(h.name)+"/global"] = global
 
 	// Retrieve all data items for a given data type (i.e. key prefix)
 	kvi, err := h.broker.ListValues(model.Key(h.name) + "/peers/")
@@ -264,7 +261,6 @@ func (h *Handler) listDataStoreItems() (DsItems, error) {
 
 	return dsDump, nil
 }
-
 
 // startDataStoreResync starts the synchronization of the data store with
 // the handler's K8s cache. The resync will only stop if it's successful,
@@ -313,7 +309,6 @@ func (h *Handler) startDataStoreResync() {
 		}
 	}(h)
 }
-
 
 // dataStoreResyncWait waits for a specified time before the data store
 // resync procedure is attempted again. The wait time doubles with each
@@ -369,44 +364,44 @@ func (h *Handler) syncDataStoreWithK8sCache(dsItems DsItems) error {
 // and the function returns an error.
 func (h *Handler) markAndSweep(dsItems DsItems) error {
 	for _, key := range h.ControllerInformer.Informer().GetStore().ListKeys() {
-			k8sProtoObj, _, err := h.ControllerInformer.Informer().GetStore().GetByKey(key)
-			if err != nil {
-				return fmt.Errorf("failed to get '%s' from k8s cache", key)
+		k8sProtoObj, _, err := h.ControllerInformer.Informer().GetStore().GetByKey(key)
+		if err != nil {
+			return fmt.Errorf("failed to get '%s' from k8s cache", key)
+		}
+
+		if key == model.Key(h.name)+"/global" {
+			k8sConfig, ok := k8sProtoObj.(v1.GlobalConf)
+			if !ok {
+				h.Log.Warn("Failed to cast newly created GlobalConf object")
 			}
+			k8sProtoObj = h.bgpGlobalConfigToProto(k8sConfig)
+		} else {
+			k8sConfig, ok := k8sProtoObj.(v1.PeerConf)
+			if !ok {
+				h.Log.Warn("Failed to cast newly created PeerConf object")
+			}
+			k8sProtoObj = h.bgpPeersConfigToProto(k8sConfig)
+		}
 
-			if key == model.Key(h.name) + "/global" {
-				k8sConfig, ok := k8sProtoObj.(v1.GlobalConf)
-				if !ok {
-					h.Log.Warn("Failed to cast newly created GlobalConf object")
-				}
-				k8sProtoObj = h.bgpGlobalConfigToProto(k8sConfig)
-				} else {
-					k8sConfig, ok := k8sProtoObj.(v1.PeerConf)
-					if !ok {
-						h.Log.Warn("Failed to cast newly created PeerConf object")
-					}
-        			k8sProtoObj = h.bgpPeersConfigToProto(k8sConfig)
-        			}
-
-			dsProtoObj, exists := dsItems[key]
-			if exists {
-				if !reflect.DeepEqual(k8sProtoObj, dsProtoObj) {
-					// Object exists in the data store, but it changed in the
-					// K8s cache; overwrite the data store
-					err := h.broker.Put(key, k8sProtoObj.(proto.Message))
-					if err != nil {
-						return fmt.Errorf("update for key '%s' failed", key)
-					}
-				}
-			} else {
-				// Object does not exist in the data store, but it exists in
-				// the K8s cache; create object in the data store
+		dsProtoObj, exists := dsItems[key]
+		if exists {
+			if !reflect.DeepEqual(k8sProtoObj, dsProtoObj) {
+				// Object exists in the data store, but it changed in the
+				// K8s cache; overwrite the data store
 				err := h.broker.Put(key, k8sProtoObj.(proto.Message))
 				if err != nil {
-					return fmt.Errorf("add for key '%s' failed", key)
+					return fmt.Errorf("update for key '%s' failed", key)
 				}
 			}
-			delete(dsItems, key)
+		} else {
+			// Object does not exist in the data store, but it exists in
+			// the K8s cache; create object in the data store
+			err := h.broker.Put(key, k8sProtoObj.(proto.Message))
+			if err != nil {
+				return fmt.Errorf("add for key '%s' failed", key)
+			}
+		}
+		delete(dsItems, key)
 
 	}
 
@@ -422,4 +417,3 @@ func (h *Handler) markAndSweep(dsItems DsItems) error {
 	}
 	return nil
 }
-
