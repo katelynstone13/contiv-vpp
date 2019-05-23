@@ -17,7 +17,7 @@
 package versioned
 
 import (
-	contivppv1 "github.com/contiv/vpp/plugins/crd/pkg/client/clientset/versioned/typed/contivppio/v1"
+	bgpconfigv1 "github.com/contiv/vpp/plugins/crd/pkg/client/clientset/versioned/typed/bgpconfig/v1"
 	nodeconfigv1 "github.com/contiv/vpp/plugins/crd/pkg/client/clientset/versioned/typed/nodeconfig/v1"
 	telemetryv1 "github.com/contiv/vpp/plugins/crd/pkg/client/clientset/versioned/typed/telemetry/v1"
 	discovery "k8s.io/client-go/discovery"
@@ -27,9 +27,9 @@ import (
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
-	ContivppV1() contivppv1.ContivppV1Interface
+	BgpconfigV1() bgpconfigv1.BgpconfigV1Interface
 	// Deprecated: please explicitly pick a version if possible.
-	Contivpp() contivppv1.ContivppV1Interface
+	Bgpconfig() bgpconfigv1.BgpconfigV1Interface
 	NodeconfigV1() nodeconfigv1.NodeconfigV1Interface
 	// Deprecated: please explicitly pick a version if possible.
 	Nodeconfig() nodeconfigv1.NodeconfigV1Interface
@@ -42,20 +42,20 @@ type Interface interface {
 // version included in a Clientset.
 type Clientset struct {
 	*discovery.DiscoveryClient
-	contivppV1   *contivppv1.ContivppV1Client
+	bgpconfigV1  *bgpconfigv1.BgpconfigV1Client
 	nodeconfigV1 *nodeconfigv1.NodeconfigV1Client
 	telemetryV1  *telemetryv1.TelemetryV1Client
 }
 
-// ContivppV1 retrieves the ContivppV1Client
-func (c *Clientset) ContivppV1() contivppv1.ContivppV1Interface {
-	return c.contivppV1
+// BgpconfigV1 retrieves the BgpconfigV1Client
+func (c *Clientset) BgpconfigV1() bgpconfigv1.BgpconfigV1Interface {
+	return c.bgpconfigV1
 }
 
-// Deprecated: Contivpp retrieves the default version of ContivppClient.
+// Deprecated: Bgpconfig retrieves the default version of BgpconfigClient.
 // Please explicitly pick a version.
-func (c *Clientset) Contivpp() contivppv1.ContivppV1Interface {
-	return c.contivppV1
+func (c *Clientset) Bgpconfig() bgpconfigv1.BgpconfigV1Interface {
+	return c.bgpconfigV1
 }
 
 // NodeconfigV1 retrieves the NodeconfigV1Client
@@ -96,7 +96,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	}
 	var cs Clientset
 	var err error
-	cs.contivppV1, err = contivppv1.NewForConfig(&configShallowCopy)
+	cs.bgpconfigV1, err = bgpconfigv1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +120,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 // panics if there is an error in the config.
 func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
-	cs.contivppV1 = contivppv1.NewForConfigOrDie(c)
+	cs.bgpconfigV1 = bgpconfigv1.NewForConfigOrDie(c)
 	cs.nodeconfigV1 = nodeconfigv1.NewForConfigOrDie(c)
 	cs.telemetryV1 = telemetryv1.NewForConfigOrDie(c)
 
@@ -131,7 +131,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
-	cs.contivppV1 = contivppv1.New(c)
+	cs.bgpconfigV1 = bgpconfigv1.New(c)
 	cs.nodeconfigV1 = nodeconfigv1.New(c)
 	cs.telemetryV1 = telemetryv1.New(c)
 

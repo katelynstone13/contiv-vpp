@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package nodeconfig
+package bgpconfig
 
 import (
 	"fmt"
@@ -20,12 +20,12 @@ import (
 	"time"
 
 	"github.com/contiv/vpp/plugins/crd/handler"
-	"github.com/contiv/vpp/plugins/crd/handler/nodeconfig"
-	"github.com/contiv/vpp/plugins/crd/pkg/apis/nodeconfig/v1"
+	"github.com/contiv/vpp/plugins/crd/handler/bgpconfig"
+	"github.com/contiv/vpp/plugins/crd/pkg/apis/bgpconfig/v1"
 	crdClientSet "github.com/contiv/vpp/plugins/crd/pkg/client/clientset/versioned"
 	factory "github.com/contiv/vpp/plugins/crd/pkg/client/informers/externalversions"
-	informers "github.com/contiv/vpp/plugins/crd/pkg/client/informers/externalversions/nodeconfig/v1"
-	listers "github.com/contiv/vpp/plugins/crd/pkg/client/listers/nodeconfig/v1"
+	informers "github.com/contiv/vpp/plugins/crd/pkg/client/informers/externalversions/bgpconfig/v1"
+	listers "github.com/contiv/vpp/plugins/crd/pkg/client/listers/bgpconfig/v1"
 	"github.com/contiv/vpp/plugins/crd/utils"
 	"github.com/ligato/cn-infra/datasync/kvdbsync"
 	"github.com/ligato/cn-infra/logging"
@@ -53,10 +53,10 @@ type Controller struct {
 	APIClient *apiextcs.Clientset
 
 	queue workqueue.RateLimitingInterface
-	// NodeConfig CRD specifics
-	nodeConfigInformer informers.NodeConfigInformer
-	nodeConfigLister   listers.NodeConfigLister
-	// event handlers for NodeConfig CRDs
+	// BgpConfig CRD specifics
+	bgpConfigInformer informers.BgpConfigInformer
+	bgpConfigLister   listers.BgpConfigLister
+	// event handlers for BgpConfig CRDs
 	eventHandler handler.Handler
 }
 
@@ -74,17 +74,17 @@ type Event struct {
 	oldResource interface{}
 }
 
-// Init performs the initialization of NodeConfig Controller
+// Init performs the initialization of BgpConfig Controller
 func (c *Controller) Init() error {
-	c.Log.Info("NodeConfig-Controller: initializing...")
-	serverStartTime = time.Now()
+	c.Log.Info("BgpConfig-Controller: initializing...")
 	var event Event
+	serverStartTime = time.Now()
 
-	crdName := reflect.TypeOf(v1.NodeConfig{}).Name()
-	err := c.createCRD(v1.CRDFullContivNodeConfigName,
+	crdName := reflect.TypeOf(v1.BgpConfig{}).Name()
+	err := c.createCRD(v1.CRDFullContivBgpConfigName,
 		v1.CRDGroup,
 		v1.CRDGroupVersion,
-		v1.CRDContivNodeConfigPlural,
+		v1.CRDContivBgpConfigPlural,
 		crdName)
 
 	if err != nil {
@@ -93,20 +93,20 @@ func (c *Controller) Init() error {
 	}
 
 	sharedFactory := factory.NewSharedInformerFactory(c.CrdClient, time.Second*30)
-	c.nodeConfigInformer = sharedFactory.Nodeconfig().V1().NodeConfigs()
-	c.nodeConfigLister = c.nodeConfigInformer.Lister()
+	c.bgpConfigInformer = sharedFactory.Bgpconfig().V1().BgpConfigs()
+	c.bgpConfigLister = c.bgpConfigInformer.Lister()
 
 	// Create a new queue in that when the informer gets a resource from listing or watching,
 	// adding the identifying key to the queue for the handler
 	c.queue = workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
 	// Add event handlers to handle the three types of events for resources (add, update, delete)
-	c.nodeConfigInformer.Informer().AddEventHandler(k8sCache.ResourceEventHandlerFuncs{
+	c.bgpConfigInformer.Informer().AddEventHandler(k8sCache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			event.key, err = k8sCache.MetaNamespaceKeyFunc(obj)
 			event.eventType = "create"
 			event.resource = obj
-			c.Log.Infof("Add NodeConfig resource with key: %s", event.key)
+			c.Log.Infof("Add BGPConfig resource with key: %s", event.key)
 			if err == nil {
 				c.queue.Add(event)
 			}
@@ -116,7 +116,7 @@ func (c *Controller) Init() error {
 			event.resource = newObj
 			event.oldResource = oldObj
 			event.eventType = "update"
-			c.Log.Infof("Update NodeConfig resource with key: %s", event.key)
+			c.Log.Infof("Update BGPConfig resource with key: %s", event.key)
 			if err == nil {
 				c.queue.Add(event)
 			}
@@ -125,17 +125,17 @@ func (c *Controller) Init() error {
 			event.key, err = k8sCache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 			event.eventType = "delete"
 			event.resource = obj
-			c.Log.Infof("Delete NodeConfig resource with key: %s", event.key)
+			c.Log.Infof("Delete BGPConfig resource with key: %s", event.key)
 			if err == nil {
 				c.queue.Add(event)
 			}
 		},
 	})
-	c.eventHandler = &nodeconfig.Handler{
-		Deps: nodeconfig.Deps{
+	c.eventHandler = &bgpconfig.Handler{
+		Deps: bgpconfig.Deps{
 			Log:                c.Log,
 			Publish:            c.Publish,
-			ControllerInformer: c.nodeConfigInformer,
+			ControllerInformer: c.bgpConfigInformer,
 		},
 	}
 	c.eventHandler.Init()
@@ -149,10 +149,10 @@ func (c *Controller) Run(ctx <-chan struct{}) {
 	// ignore new items and shutdown when done
 	defer c.queue.ShutDown()
 
-	c.Log.Info("NodeConfig-Controller: Starting...")
+	c.Log.Info("BgpConfig-Controller: Starting...")
 
 	// runs the informer to list and watch on a goroutine
-	go c.nodeConfigInformer.Informer().Run(ctx)
+	go c.bgpConfigInformer.Informer().Run(ctx)
 
 	// populate resources one after synchronization
 	if !k8sCache.WaitForCacheSync(ctx, c.HasSynced) {
@@ -167,20 +167,20 @@ func (c *Controller) Run(ctx <-chan struct{}) {
 
 // HasSynced indicates when the controller is synced up with the K8s.
 func (c *Controller) HasSynced() bool {
-	return c.nodeConfigInformer.Informer().HasSynced()
+	return c.bgpConfigInformer.Informer().HasSynced()
 }
 
 // runWorker processes new items in the queue
 func (c *Controller) runWorker() {
-	c.Log.Info("NodeConfig-Controller: Running..")
+	c.Log.Info("BgpConfig-Controller: Running..")
 
 	// invoke processNextItem to fetch and consume the next change
 	// to a watched or listed resource
 	for c.processNextItem() {
-		c.Log.Info("NodeConfig-Controller-runWorker: processing next item...")
+		c.Log.Info("BgpConfig-Controller-runWorker: processing next item...")
 	}
 
-	c.Log.Info("NodeConfig-Controller-runWorker: Completed")
+	c.Log.Info("BgpConfig-Controller-runWorker: Completed")
 }
 
 // processNextItem retrieves next queued item, acts accordingly for object CRUD
@@ -212,9 +212,8 @@ func (c *Controller) processNextItem() bool {
 }
 
 // processItem processes the next item from the queue and send the event update
-// to the node config event handler
+// to the BGP config event handler
 func (c *Controller) processItem(event Event) error {
-
 	// process events based on its type
 	switch event.eventType {
 	case "create":
@@ -237,12 +236,12 @@ func (c *Controller) processItem(event Event) error {
 
 // Create the CRD resource, ignore error if it already exists
 func (c *Controller) createCRD(FullName, Group, Version, Plural, Name string) error {
-	c.Log.Info("Creating NodeConfig CRD")
+	c.Log.Info("Creating BgpConfig CRD")
 
 	var validation *apiextv1beta1.CustomResourceValidation
 	switch Name {
-	case "NodeConfig":
-		validation = nodeConfigValidation()
+	case "BgpConfig":
+		validation = bgpConfigValidation()
 	default:
 		validation = &apiextv1beta1.CustomResourceValidation{}
 	}
@@ -267,8 +266,8 @@ func (c *Controller) createCRD(FullName, Group, Version, Plural, Name string) er
 	return err
 }
 
-// nodeConfigValidation generates OpenAPIV3 validator for NodeConfig CRD
-func nodeConfigValidation() *apiextv1beta1.CustomResourceValidation {
+// bgpConfigValidation generates OpenAPIV3 validator for BgpConfig CRD
+func bgpConfigValidation() *apiextv1beta1.CustomResourceValidation {
 	validation := &apiextv1beta1.CustomResourceValidation{
 		OpenAPIV3Schema: &apiextv1beta1.JSONSchemaProps{
 			Properties: map[string]apiextv1beta1.JSONSchemaProps{

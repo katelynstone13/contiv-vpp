@@ -18,8 +18,8 @@ package fake
 
 import (
 	clientset "github.com/contiv/vpp/plugins/crd/pkg/client/clientset/versioned"
-	contivppv1 "github.com/contiv/vpp/plugins/crd/pkg/client/clientset/versioned/typed/contivppio/v1"
-	fakecontivppv1 "github.com/contiv/vpp/plugins/crd/pkg/client/clientset/versioned/typed/contivppio/v1/fake"
+	bgpconfigv1 "github.com/contiv/vpp/plugins/crd/pkg/client/clientset/versioned/typed/bgpconfig/v1"
+	fakebgpconfigv1 "github.com/contiv/vpp/plugins/crd/pkg/client/clientset/versioned/typed/bgpconfig/v1/fake"
 	nodeconfigv1 "github.com/contiv/vpp/plugins/crd/pkg/client/clientset/versioned/typed/nodeconfig/v1"
 	fakenodeconfigv1 "github.com/contiv/vpp/plugins/crd/pkg/client/clientset/versioned/typed/nodeconfig/v1/fake"
 	telemetryv1 "github.com/contiv/vpp/plugins/crd/pkg/client/clientset/versioned/typed/telemetry/v1"
@@ -73,14 +73,14 @@ func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 
 var _ clientset.Interface = &Clientset{}
 
-// ContivppV1 retrieves the ContivppV1Client
-func (c *Clientset) ContivppV1() contivppv1.ContivppV1Interface {
-	return &fakecontivppv1.FakeContivppV1{Fake: &c.Fake}
+// BgpconfigV1 retrieves the BgpconfigV1Client
+func (c *Clientset) BgpconfigV1() bgpconfigv1.BgpconfigV1Interface {
+	return &fakebgpconfigv1.FakeBgpconfigV1{Fake: &c.Fake}
 }
 
-// Contivpp retrieves the ContivppV1Client
-func (c *Clientset) Contivpp() contivppv1.ContivppV1Interface {
-	return &fakecontivppv1.FakeContivppV1{Fake: &c.Fake}
+// Bgpconfig retrieves the BgpconfigV1Client
+func (c *Clientset) Bgpconfig() bgpconfigv1.BgpconfigV1Interface {
+	return &fakebgpconfigv1.FakeBgpconfigV1{Fake: &c.Fake}
 }
 
 // NodeconfigV1 retrieves the NodeconfigV1Client

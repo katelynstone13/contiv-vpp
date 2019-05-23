@@ -19,37 +19,33 @@ package crd
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
+	"sync"
+	"time"
+
 	"github.com/contiv/vpp/plugins/crd/api"
 	"github.com/contiv/vpp/plugins/crd/cache"
+	"github.com/contiv/vpp/plugins/crd/controller/bgpconfig"
 	"github.com/contiv/vpp/plugins/crd/controller/nodeconfig"
 	"github.com/contiv/vpp/plugins/crd/controller/telemetry"
+	crdClientSet "github.com/contiv/vpp/plugins/crd/pkg/client/clientset/versioned"
+	"github.com/contiv/vpp/plugins/crd/utils"
 	"github.com/contiv/vpp/plugins/crd/validator"
+	nodemodel "github.com/contiv/vpp/plugins/ksr/model/node"
+	podmodel "github.com/contiv/vpp/plugins/ksr/model/pod"
+	vppnodemodel "github.com/contiv/vpp/plugins/nodesync/vppnode"
 	"github.com/ligato/cn-infra/config"
 	"github.com/ligato/cn-infra/datasync"
 	"github.com/ligato/cn-infra/datasync/kvdbsync"
 	"github.com/ligato/cn-infra/datasync/resync"
 	"github.com/ligato/cn-infra/infra"
 	"github.com/ligato/cn-infra/logging"
+	"github.com/ligato/cn-infra/rpc/rest"
 	"github.com/ligato/cn-infra/utils/safeclose"
 	"github.com/namsral/flag"
-	"os"
-	"strconv"
-	"sync"
-	"time"
-
-	crdClientSet "github.com/contiv/vpp/plugins/crd/pkg/client/clientset/versioned"
-	nodemodel "github.com/contiv/vpp/plugins/ksr/model/node"
-	podmodel "github.com/contiv/vpp/plugins/ksr/model/pod"
-	vppnodemodel "github.com/contiv/vpp/plugins/nodesync/vppnode"
-
-	"k8s.io/client-go/tools/clientcmd"
-
-	"github.com/contiv/vpp/plugins/crd/controller/customnetwork"
-	"github.com/contiv/vpp/plugins/crd/controller/servicefunctionchain"
-	"github.com/contiv/vpp/plugins/crd/utils"
-	"github.com/ligato/cn-infra/db/keyval/etcd"
-	"github.com/ligato/cn-infra/rpc/rest"
 	apiextcs "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 // Plugin implements NodeConfig and TelemetryReport CRDs.
@@ -71,13 +67,13 @@ type Plugin struct {
 	pendingResync  datasync.ResyncEvent
 	pendingChanges []datasync.ChangeEvent
 
-	telemetryController            *telemetry.Controller
-	nodeConfigController           *nodeconfig.Controller
-	customNetworkController        *customnetwork.Controller
-	serviceFunctionChainController *servicefunctionchain.Controller
-	cache                          *cache.ContivTelemetryCache
-	processor                      api.ContivTelemetryProcessor
-	verbose                        bool
+	telemetryController  *telemetry.Controller
+	nodeConfigController *nodeconfig.Controller
+	bgpConfigController  *bgpconfig.Controller
+
+	cache     *cache.ContivTelemetryCache
+	processor api.ContivTelemetryProcessor
+	verbose   bool
 }
 
 // Deps defines dependencies of CRD plugin.
@@ -94,8 +90,6 @@ type Deps struct {
 	Watcher datasync.KeyValProtoWatcher
 	Publish *kvdbsync.Plugin // KeyProtoValWriter does not define Delete
 }
-
-const electionPrefix = "/contiv-crd/election"
 
 // Init initializes policy layers and caches and starts watching contiv-etcd for K8s configuration.
 func (p *Plugin) Init() error {
@@ -196,18 +190,9 @@ func (p *Plugin) Init() error {
 		APIClient: apiclientset,
 	}
 
-	p.customNetworkController = &customnetwork.Controller{
-		Deps: customnetwork.Deps{
-			Log:     p.Log.NewLogger("-customNetworkController"),
-			Publish: p.Publish,
-		},
-		CrdClient: crdClient,
-		APIClient: apiclientset,
-	}
-
-	p.serviceFunctionChainController = &servicefunctionchain.Controller{
-		Deps: servicefunctionchain.Deps{
-			Log:     p.Log.NewLogger("-serviceFunctionChainController"),
+	p.bgpConfigController = &bgpconfig.Controller{
+		Deps: bgpconfig.Deps{
+			Log:     p.Log.NewLogger("-bgpConfigController"),
 			Publish: p.Publish,
 		},
 		CrdClient: crdClient,
@@ -217,11 +202,9 @@ func (p *Plugin) Init() error {
 	// Init and run the controllers
 	p.telemetryController.Init()
 	p.nodeConfigController.Init()
-	p.customNetworkController.Init()
-	p.serviceFunctionChainController.Init()
+	p.bgpConfigController.Init()
 
 	if p.verbose {
-		p.customNetworkController.Log.SetLevel(logging.DebugLevel)
 		p.telemetryController.Log.SetLevel(logging.DebugLevel)
 		p.cache.Log.SetLevel(logging.DebugLevel)
 
@@ -254,26 +237,9 @@ func (p *Plugin) AfterInit() error {
 		reg := p.Resync.Register(string(p.PluginName))
 		go p.handleResync(reg.StatusChan())
 	}
-	go func() {
-		if etcdPlugin, ok := p.Publish.KvPlugin.(*etcd.Plugin); ok {
-			p.Log.Info("Start campaign in crd leader election")
-
-			_, err := etcdPlugin.CampaignInElection(p.ctx, electionPrefix)
-			if err != nil {
-				p.Log.Error(err)
-				return
-			}
-			p.Log.Info("The instance was elected as leader.")
-
-		} else {
-			p.Log.Warn("leader election is not supported for a kv-store different from etcd")
-		}
-		go p.telemetryController.Run(p.ctx.Done())
-		go p.nodeConfigController.Run(p.ctx.Done())
-		go p.customNetworkController.Run(p.ctx.Done())
-		go p.serviceFunctionChainController.Run(p.ctx.Done())
-
-	}()
+	go p.telemetryController.Run(p.ctx.Done())
+	go p.nodeConfigController.Run(p.ctx.Done())
+	go p.bgpConfigController.Run(p.ctx.Done())
 
 	return nil
 }

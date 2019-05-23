@@ -15,9 +15,8 @@
 package handler
 
 import (
-	"github.com/contiv/vpp/plugins/crd/handler/customnetwork"
+	"github.com/contiv/vpp/plugins/crd/handler/bgpconfig"
 	"github.com/contiv/vpp/plugins/crd/handler/nodeconfig"
-	"github.com/contiv/vpp/plugins/crd/handler/servicefunctionchain"
 	"github.com/contiv/vpp/plugins/crd/handler/telemetry"
 )
 
@@ -36,11 +35,10 @@ type Handler interface {
 
 // Map maps each event handler function to a name for easily lookup
 var Map = map[string]interface{}{
-	"default":              &Default{},
-	"telemetry":            &telemetry.Handler{},
-	"nodeConfig":           &nodeconfig.Handler{},
-	"customNetwork":        &customnetwork.Handler{},
-	"serviceFunctionChain": &servicefunctionchain.Handler{},
+	"default":    &Default{},
+	"telemetry":  &telemetry.Handler{},
+	"nodeConfig": &nodeconfig.Handler{},
+	"bgpConfig":  &bgpconfig.Handler{},
 }
 
 // Default handler implements Handler interface

@@ -19,15 +19,16 @@ package utils
 import (
 	"context"
 	"encoding/json"
-	contivppio "github.com/contiv/vpp/plugins/crd/pkg/apis/contivppio/v1"
-	nodeconfig "github.com/contiv/vpp/plugins/crd/pkg/apis/nodeconfig/v1"
-	telemetry "github.com/contiv/vpp/plugins/crd/pkg/apis/telemetry/v1"
-	"github.com/unrolled/render"
 	"io/ioutil"
-	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/http"
 	"os/exec"
 	"time"
+
+	bgpconfig "github.com/contiv/vpp/plugins/crd/pkg/apis/bgpconfig/v1"
+	nodeconfig "github.com/contiv/vpp/plugins/crd/pkg/apis/nodeconfig/v1"
+	telemetry "github.com/contiv/vpp/plugins/crd/pkg/apis/telemetry/v1"
+	"github.com/unrolled/render"
+	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -44,10 +45,10 @@ func GetObjectMetaData(obj interface{}) meta.ObjectMeta {
 		objectMeta = object.ObjectMeta
 	case *nodeconfig.NodeConfig:
 		objectMeta = object.ObjectMeta
-	case *contivppio.CustomNetwork:
+	case *bgpconfig.BgpConfig:
 		objectMeta = object.ObjectMeta
-	case *contivppio.ServiceFunctionChain:
-		objectMeta = object.ObjectMeta
+	default:
+		return meta.ObjectMeta{}
 	}
 
 	return objectMeta
