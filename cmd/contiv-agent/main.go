@@ -264,7 +264,6 @@ func main() {
 		Policy:              policyPlugin,
 		Service:             servicePlugin,
 		BGPReflector:        bgpReflector,
-		ContivBGP:           &bgp.DefaultPlugin,
 	}
 
 	a := agent.NewAgent(agent.AllPlugins(contivAgent), agent.StartTimeout(getStartupTimeout()))
