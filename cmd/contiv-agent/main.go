@@ -102,7 +102,6 @@ type ContivAgent struct {
 	Policy       *policy.Plugin
 	Service      *service.Plugin
 	BGPReflector *bgpreflector.BGPReflector
-	ContivBGP    *bgp.BgpPlugin
 }
 
 func (c *ContivAgent) String() string {
