@@ -2,14 +2,13 @@
 apiVersion: bgpconfig.contiv.vpp/v1
 kind: BgpConfig
 metadata:
-  name: configName
+  name: test1
 spec:
-  BGPGlobal:
-    As: 65001
-    RouterId: 10.20.0.2
-    ListenPort: -1
-  Peers:
-    PeerConf:
-      Name: Gateway
-      PeerAs: 65001
-      NeighborAddress: 10.20.0.100
+  bgpGlobal:
+    as: 65001
+    router_id: "10.20.0.2"
+    listen_port: -1
+  peers:
+    - name: "Gateway"
+      peer_as: 65001
+      neighbor_address: "10.20.0.100"
