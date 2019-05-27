@@ -28,8 +28,6 @@ func PeerKey(name string) string {
 	})
 }*/
 
-
-
 // Keyword defines the keyword identifying NodeConfig data.
 const Keyword = "bgpconfig"
 
@@ -42,7 +40,6 @@ func KeyPrefix() string {
 func Key(conf string) string {
 	return KeyPrefix() + conf
 }
-
 
 /*func GlobalKey(name string) string {
 	return models.Key(&GlobalConf{

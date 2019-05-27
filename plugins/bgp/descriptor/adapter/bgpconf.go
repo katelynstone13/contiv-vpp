@@ -3,51 +3,51 @@
 package adapter
 
 import (
+	"github.com/contiv/vpp/plugins/bgp/model"
 	"github.com/gogo/protobuf/proto"
 	. "github.com/ligato/vpp-agent/plugins/kvscheduler/api"
-	"github.com/contiv/vpp/plugins/bgp/model"
 )
 
 ////////// type-safe key-value pair with metadata //////////
 
-type PeerConfKVWithMetadata struct {
+type BgpConfKVWithMetadata struct {
 	Key      string
-	Value    *model.PeerConf
+	Value    *model.BgpConf
 	Metadata interface{}
 	Origin   ValueOrigin
 }
 
 ////////// type-safe Descriptor structure //////////
 
-type PeerConfDescriptor struct {
+type BgpConfDescriptor struct {
 	Name                 string
 	KeySelector          KeySelector
 	ValueTypeName        string
 	KeyLabel             func(key string) string
-	ValueComparator      func(key string, oldValue, newValue *model.PeerConf) bool
+	ValueComparator      func(key string, oldValue, newValue *model.BgpConf) bool
 	NBKeyPrefix          string
 	WithMetadata         bool
 	MetadataMapFactory   MetadataMapFactory
-	Validate             func(key string, value *model.PeerConf) error
-	Create               func(key string, value *model.PeerConf) (metadata interface{}, err error)
-	Delete               func(key string, value *model.PeerConf, metadata interface{}) error
-	Update               func(key string, oldValue, newValue *model.PeerConf, oldMetadata interface{}) (newMetadata interface{}, err error)
-	UpdateWithRecreate   func(key string, oldValue, newValue *model.PeerConf, metadata interface{}) bool
-	Retrieve             func(correlate []PeerConfKVWithMetadata) ([]PeerConfKVWithMetadata, error)
+	Validate             func(key string, value *model.BgpConf) error
+	Create               func(key string, value *model.BgpConf) (metadata interface{}, err error)
+	Delete               func(key string, value *model.BgpConf, metadata interface{}) error
+	Update               func(key string, oldValue, newValue *model.BgpConf, oldMetadata interface{}) (newMetadata interface{}, err error)
+	UpdateWithRecreate   func(key string, oldValue, newValue *model.BgpConf, metadata interface{}) bool
+	Retrieve             func(correlate []BgpConfKVWithMetadata) ([]BgpConfKVWithMetadata, error)
 	IsRetriableFailure   func(err error) bool
-	DerivedValues        func(key string, value *model.PeerConf) []KeyValuePair
-	Dependencies         func(key string, value *model.PeerConf) []Dependency
+	DerivedValues        func(key string, value *model.BgpConf) []KeyValuePair
+	Dependencies         func(key string, value *model.BgpConf) []Dependency
 	RetrieveDependencies []string /* descriptor name */
 }
 
 ////////// Descriptor adapter //////////
 
-type PeerConfDescriptorAdapter struct {
-	descriptor *PeerConfDescriptor
+type BgpConfDescriptorAdapter struct {
+	descriptor *BgpConfDescriptor
 }
 
-func NewPeerConfDescriptor(typedDescriptor *PeerConfDescriptor) *KVDescriptor {
-	adapter := &PeerConfDescriptorAdapter{descriptor: typedDescriptor}
+func NewBgpConfDescriptor(typedDescriptor *BgpConfDescriptor) *KVDescriptor {
+	adapter := &BgpConfDescriptorAdapter{descriptor: typedDescriptor}
 	descriptor := &KVDescriptor{
 		Name:                 typedDescriptor.Name,
 		KeySelector:          typedDescriptor.KeySelector,
@@ -89,88 +89,88 @@ func NewPeerConfDescriptor(typedDescriptor *PeerConfDescriptor) *KVDescriptor {
 	return descriptor
 }
 
-func (da *PeerConfDescriptorAdapter) ValueComparator(key string, oldValue, newValue proto.Message) bool {
-	typedOldValue, err1 := castPeerConfValue(key, oldValue)
-	typedNewValue, err2 := castPeerConfValue(key, newValue)
+func (da *BgpConfDescriptorAdapter) ValueComparator(key string, oldValue, newValue proto.Message) bool {
+	typedOldValue, err1 := castBgpConfValue(key, oldValue)
+	typedNewValue, err2 := castBgpConfValue(key, newValue)
 	if err1 != nil || err2 != nil {
 		return false
 	}
 	return da.descriptor.ValueComparator(key, typedOldValue, typedNewValue)
 }
 
-func (da *PeerConfDescriptorAdapter) Validate(key string, value proto.Message) (err error) {
-	typedValue, err := castPeerConfValue(key, value)
+func (da *BgpConfDescriptorAdapter) Validate(key string, value proto.Message) (err error) {
+	typedValue, err := castBgpConfValue(key, value)
 	if err != nil {
 		return err
 	}
 	return da.descriptor.Validate(key, typedValue)
 }
 
-func (da *PeerConfDescriptorAdapter) Create(key string, value proto.Message) (metadata Metadata, err error) {
-	typedValue, err := castPeerConfValue(key, value)
+func (da *BgpConfDescriptorAdapter) Create(key string, value proto.Message) (metadata Metadata, err error) {
+	typedValue, err := castBgpConfValue(key, value)
 	if err != nil {
 		return nil, err
 	}
 	return da.descriptor.Create(key, typedValue)
 }
 
-func (da *PeerConfDescriptorAdapter) Update(key string, oldValue, newValue proto.Message, oldMetadata Metadata) (newMetadata Metadata, err error) {
-	oldTypedValue, err := castPeerConfValue(key, oldValue)
+func (da *BgpConfDescriptorAdapter) Update(key string, oldValue, newValue proto.Message, oldMetadata Metadata) (newMetadata Metadata, err error) {
+	oldTypedValue, err := castBgpConfValue(key, oldValue)
 	if err != nil {
 		return nil, err
 	}
-	newTypedValue, err := castPeerConfValue(key, newValue)
+	newTypedValue, err := castBgpConfValue(key, newValue)
 	if err != nil {
 		return nil, err
 	}
-	typedOldMetadata, err := castPeerConfMetadata(key, oldMetadata)
+	typedOldMetadata, err := castBgpConfMetadata(key, oldMetadata)
 	if err != nil {
 		return nil, err
 	}
 	return da.descriptor.Update(key, oldTypedValue, newTypedValue, typedOldMetadata)
 }
 
-func (da *PeerConfDescriptorAdapter) Delete(key string, value proto.Message, metadata Metadata) error {
-	typedValue, err := castPeerConfValue(key, value)
+func (da *BgpConfDescriptorAdapter) Delete(key string, value proto.Message, metadata Metadata) error {
+	typedValue, err := castBgpConfValue(key, value)
 	if err != nil {
 		return err
 	}
-	typedMetadata, err := castPeerConfMetadata(key, metadata)
+	typedMetadata, err := castBgpConfMetadata(key, metadata)
 	if err != nil {
 		return err
 	}
 	return da.descriptor.Delete(key, typedValue, typedMetadata)
 }
 
-func (da *PeerConfDescriptorAdapter) UpdateWithRecreate(key string, oldValue, newValue proto.Message, metadata Metadata) bool {
-	oldTypedValue, err := castPeerConfValue(key, oldValue)
+func (da *BgpConfDescriptorAdapter) UpdateWithRecreate(key string, oldValue, newValue proto.Message, metadata Metadata) bool {
+	oldTypedValue, err := castBgpConfValue(key, oldValue)
 	if err != nil {
 		return true
 	}
-	newTypedValue, err := castPeerConfValue(key, newValue)
+	newTypedValue, err := castBgpConfValue(key, newValue)
 	if err != nil {
 		return true
 	}
-	typedMetadata, err := castPeerConfMetadata(key, metadata)
+	typedMetadata, err := castBgpConfMetadata(key, metadata)
 	if err != nil {
 		return true
 	}
 	return da.descriptor.UpdateWithRecreate(key, oldTypedValue, newTypedValue, typedMetadata)
 }
 
-func (da *PeerConfDescriptorAdapter) Retrieve(correlate []KVWithMetadata) ([]KVWithMetadata, error) {
-	var correlateWithType []PeerConfKVWithMetadata
+func (da *BgpConfDescriptorAdapter) Retrieve(correlate []KVWithMetadata) ([]KVWithMetadata, error) {
+	var correlateWithType []BgpConfKVWithMetadata
 	for _, kvpair := range correlate {
-		typedValue, err := castPeerConfValue(kvpair.Key, kvpair.Value)
+		typedValue, err := castBgpConfValue(kvpair.Key, kvpair.Value)
 		if err != nil {
 			continue
 		}
-		typedMetadata, err := castPeerConfMetadata(kvpair.Key, kvpair.Metadata)
+		typedMetadata, err := castBgpConfMetadata(kvpair.Key, kvpair.Metadata)
 		if err != nil {
 			continue
 		}
 		correlateWithType = append(correlateWithType,
-			PeerConfKVWithMetadata{
+			BgpConfKVWithMetadata{
 				Key:      kvpair.Key,
 				Value:    typedValue,
 				Metadata: typedMetadata,
@@ -195,16 +195,16 @@ func (da *PeerConfDescriptorAdapter) Retrieve(correlate []KVWithMetadata) ([]KVW
 	return values, err
 }
 
-func (da *PeerConfDescriptorAdapter) DerivedValues(key string, value proto.Message) []KeyValuePair {
-	typedValue, err := castPeerConfValue(key, value)
+func (da *BgpConfDescriptorAdapter) DerivedValues(key string, value proto.Message) []KeyValuePair {
+	typedValue, err := castBgpConfValue(key, value)
 	if err != nil {
 		return nil
 	}
 	return da.descriptor.DerivedValues(key, typedValue)
 }
 
-func (da *PeerConfDescriptorAdapter) Dependencies(key string, value proto.Message) []Dependency {
-	typedValue, err := castPeerConfValue(key, value)
+func (da *BgpConfDescriptorAdapter) Dependencies(key string, value proto.Message) []Dependency {
+	typedValue, err := castBgpConfValue(key, value)
 	if err != nil {
 		return nil
 	}
@@ -213,15 +213,15 @@ func (da *PeerConfDescriptorAdapter) Dependencies(key string, value proto.Messag
 
 ////////// Helper methods //////////
 
-func castPeerConfValue(key string, value proto.Message) (*model.PeerConf, error) {
-	typedValue, ok := value.(*model.PeerConf)
+func castBgpConfValue(key string, value proto.Message) (*model.BgpConf, error) {
+	typedValue, ok := value.(*model.BgpConf)
 	if !ok {
 		return nil, ErrInvalidValueType(key, value)
 	}
 	return typedValue, nil
 }
 
-func castPeerConfMetadata(key string, metadata Metadata) (interface{}, error) {
+func castBgpConfMetadata(key string, metadata Metadata) (interface{}, error) {
 	if metadata == nil {
 		return nil, nil
 	}

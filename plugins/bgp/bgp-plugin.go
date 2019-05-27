@@ -1,8 +1,7 @@
 package bgp
 
 //go:generate protoc --proto_path=model --proto_path=$GOPATH/src --gogo_out=model model/bgp.proto
-//go:generate descriptor-adapter --descriptor-name GlobalConf --value-type *model.GlobalConf --import "model" --output-dir "descriptor"
-//go:generate descriptor-adapter --descriptor-name PeerConf --value-type *model.PeerConf --import "model" --output-dir "descriptor"
+//go:generate descriptor-adapter --descriptor-name BgpConf --value-type *model.BgpConf --import "model" --output-dir "descriptor"
 
 import (
 	"bytes"
@@ -31,12 +30,12 @@ import (
 
 type BgpPlugin struct {
 	Deps
-	watchCloser chan string
-	nlriMap     map[uint32]*any.Any
-	nextHopMap map[uint32]string
+	watchCloser   chan string
+	nlriMap       map[uint32]*any.Any
+	nextHopMap    map[uint32]string
 	hasConfigChan chan bool
-	hasConfig bool
-	etcdInUse bool
+	hasConfig     bool
+	etcdInUse     bool
 }
 
 //Deps is only for external dependencies
@@ -49,10 +48,10 @@ type Deps struct {
 	KVStore     keyval.KvProtoPlugin
 }
 
-
 const nodePrefix = "/vnf-agent/contiv-ksr/allocatedIDs/"
 const getIpamDataCmd = "contiv/v1/ipam"
 const nodePrefixTwo = "/vnf-agent/contiv-ksr/k8s/node/"
+
 func (p *BgpPlugin) String() string {
 	return "Starting BgpPlugin Application"
 }
@@ -67,12 +66,12 @@ func (p *BgpPlugin) Init() error {
 	p.nextHopMap = make(map[uint32]string)
 	p.hasConfigChan = make(chan bool)
 
-	gd := descriptor.NewGlobalConfDescriptor(p.Log, p.BGPServer, p.hasConfigChan)
+	gd := descriptor.NewBgpConfDescriptor(p.Log, p.BGPServer, p.hasConfigChan)
 	p.KVScheduler.RegisterKVDescriptor(gd)
-	// register descriptor for bgp peer config
 
-	pd := descriptor.NewPeerConfDescriptor(p.Log, p.BGPServer)
-	p.KVScheduler.RegisterKVDescriptor(pd)
+	/*pd := descriptor.NewPeerConfDescriptor(p.Log, p.BGPServer)
+	p.KVScheduler.RegisterKVDescriptor(pd)*/
+
 	p.watchCloser = make(chan string)
 
 	watcher := p.Deps.KVStore.NewWatcher(nodePrefix)
@@ -126,7 +125,6 @@ func (p *BgpPlugin) onChange(resp datasync.ProtoWatchResp) {
 	//ipParts := strings.Split(ip, "/")
 	//ip = ipParts[0]
 
-
 	switch changeType {
 	case datasync.Put:
 		for {
@@ -143,7 +141,7 @@ func (p *BgpPlugin) onChange(resp datasync.ProtoWatchResp) {
 				break
 			}
 		}
-		p.etcdInUse= true
+		p.etcdInUse = true
 		p.delete(id)
 		p.etcdInUse = false
 	default:
@@ -152,21 +150,21 @@ func (p *BgpPlugin) onChange(resp datasync.ProtoWatchResp) {
 
 }
 
-func(p *BgpPlugin)add(id uint32, nodeName string) {
-	broker := p.KVStore.NewBroker(nodePrefixTwo )
+func (p *BgpPlugin) add(id uint32, nodeName string) {
+	broker := p.KVStore.NewBroker(nodePrefixTwo)
 	ni := &node.Node{}
-	broker.GetValue(nodeName,ni )
+	broker.GetValue(nodeName, ni)
 	var mgmtAddr string
-	p.Log.Infof("%v\n",ni)
+	p.Log.Infof("%v\n", ni)
 	for _, address := range ni.Addresses {
 		if address.Type == node.NodeAddress_NodeInternalIP ||
-			address.Type == node.NodeAddress_NodeExternalIP{
+			address.Type == node.NodeAddress_NodeExternalIP {
 			mgmtAddr = address.Address
 			break
 		}
 	}
 	if mgmtAddr == "" {
-		p.Log.Errorf("Could not find internal ip of %v in %v",nodeName, nodePrefix+nodeName )
+		p.Log.Errorf("Could not find internal ip of %v in %v", nodeName, nodePrefix+nodeName)
 		return
 	}
 	client, err := remote.CreateHTTPClient("../../cmd/contiv-bgp/http.client.conf")
@@ -188,7 +186,7 @@ func(p *BgpPlugin)add(id uint32, nodeName string) {
 		return
 	}
 	//Setting Route info
-	ip:= ipam.NodeIP
+	ip := ipam.NodeIP
 	podSubnetParts := strings.Split(ipam.PodSubnetThisNode, "/")
 	prefixLen, err := strconv.ParseUint(podSubnetParts[1], 10, 32)
 	if err != nil {
@@ -197,7 +195,7 @@ func(p *BgpPlugin)add(id uint32, nodeName string) {
 		return
 	}
 	p.Log.Infof("PREFIX: %s, ", podSubnetParts[0])
-	p.Log.Infof("PREFIXLEN: %d, ",uint32(prefixLen) )
+	p.Log.Infof("PREFIXLEN: %d, ", uint32(prefixLen))
 	nlri, _ := ptypes.MarshalAny(&bgp_api.IPAddressPrefix{
 		Prefix:    podSubnetParts[0],
 		PrefixLen: uint32(prefixLen),
@@ -221,14 +219,14 @@ func(p *BgpPlugin)add(id uint32, nodeName string) {
 		p.Log.Errorf("AddPath: %v", err)
 	}
 	p.nlriMap[id] = nlri
-	p.nextHopMap[id]=ip
+	p.nextHopMap[id] = ip
 }
 
-func(p *BgpPlugin)delete(id uint32) {
+func (p *BgpPlugin) delete(id uint32) {
 	nlri := p.nlriMap[id]
 	ip := p.nextHopMap[id]
 	if nlri == nil || ip == "" {
-		p.Log.Error("Node with id %d has not yet been added",id)
+		p.Log.Error("Node with id %d has not yet been added", id)
 		return
 	}
 	a1, _ := ptypes.MarshalAny(&bgp_api.OriginAttribute{
@@ -284,7 +282,7 @@ func (p *BgpPlugin) addExisting() {
 		}
 	}
 	p.etcdInUse = true
-	kv:= p.KVStore.NewBroker("")
+	kv := p.KVStore.NewBroker("")
 
 	itr, err := kv.ListValues(nodePrefix)
 	if err != nil {
