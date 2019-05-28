@@ -206,7 +206,6 @@ func (h *Handler) bgpGlobalConfigToProto(bgpGlobalConfig v1.GlobalConf) *model.G
 
 }
 
-
 // listDataStoreItems gets all items of a given type from Etcd
 func (h *Handler) listDataStoreItems() (DsItems, error) {
 	dsDump := make(map[string]interface{})
