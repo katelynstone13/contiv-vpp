@@ -49,7 +49,7 @@ type Handler struct {
 
 	broker KeyProtoValBroker
 	prefix string
-	//kpc    K8sToProtoConverter
+	kpc    K8sToProtoConverter
 
 	syncStopCh chan bool
 	name       string
@@ -96,7 +96,6 @@ func (h *Handler) Init() error {
 	h.syncStopCh = make(chan bool, 1)
 	h.prefix = model.KeyPrefix()
 
-	/*
 		h.kpc = func(obj interface{}) (interface{}, string, bool) {
 			bgpConfig, ok := obj.(*v1.BgpConfig)
 			if !ok {
@@ -105,7 +104,7 @@ func (h *Handler) Init() error {
 			}
 			return h.bgpConfigToProto(bgpConfig), model.Key(bgpConfig.Name), true
 		}
-	*/
+
 	return nil
 }
 
@@ -122,25 +121,13 @@ func (h *Handler) ObjectCreated(obj interface{}) {
 	}
 
 	//Put global undder its prefix
-	globalConfigProto := h.bgpGlobalConfigToProto(bgpConfig.Spec.BGPGlobal)
-	err := h.Publish.Put(model.Key(bgpConfig.Name)+"/global", globalConfigProto)
+	bgpConfigProto := h.bgpConfigToProto(bgpConfig)
+	err := h.Publish.Put(model.Key(bgpConfig.Name), bgpConfigProto)
 	if err != nil {
 		h.Log.Errorf("error publish.put global : %v", err)
 		h.dsSynced = false
 		h.startDataStoreResync()
 	}
-
-	// Put each peer under its prefix
-	for _, nextPeer := range bgpConfig.Spec.Peers {
-		peerProto := h.bgpPeersConfigToProto(nextPeer)
-		err := h.Publish.Put(model.Key(bgpConfig.Name)+"/peers/"+nextPeer.Name, peerProto)
-		if err != nil {
-			h.Log.Errorf("error publish.put peers : %v", err)
-			h.dsSynced = false
-			h.startDataStoreResync()
-		}
-	}
-
 	h.name = bgpConfig.Name
 
 }
@@ -152,15 +139,9 @@ func (h *Handler) ObjectDeleted(obj interface{}) {
 		h.Log.Warn("Failed to cast newly created bgp-config object")
 		return
 	}
-	_, err := h.Publish.Delete(model.Key(bgpConfig.Name) + "/global")
+	_, err := h.Publish.Delete(model.Key(bgpConfig.Name))
 	if err != nil {
-		h.Log.Errorf("error publish.put global : %v", err)
-	}
-	for _, nextPeer := range bgpConfig.Spec.Peers {
-		_, err := h.Publish.Delete(model.Key(bgpConfig.Name) + "/peers/" + nextPeer.Name)
-		if err != nil {
-			h.Log.Errorf("error publish.delte peer : %v", err)
-		}
+		h.Log.Errorf("error publish.delete : %v", err)
 	}
 	h.name = ""
 }
@@ -225,18 +206,13 @@ func (h *Handler) bgpGlobalConfigToProto(bgpGlobalConfig v1.GlobalConf) *model.G
 
 }
 
+
 // listDataStoreItems gets all items of a given type from Etcd
-// Pass this to Mark & Sweep
 func (h *Handler) listDataStoreItems() (DsItems, error) {
 	dsDump := make(map[string]interface{})
 
-	//add global to dsDump
-	global := &model.GlobalConf{}
-	h.broker.GetValue(model.Key(h.name)+"/global", global)
-	dsDump[model.Key(h.name)+"/global"] = global
-
 	// Retrieve all data items for a given data type (i.e. key prefix)
-	kvi, err := h.broker.ListValues(model.Key(h.name) + "/peers/")
+	kvi, err := h.broker.ListValues(h.prefix)
 	if err != nil {
 		return dsDump, fmt.Errorf("bgp config handler can not get kv iterator, error: %s", err)
 	}
@@ -249,11 +225,11 @@ func (h *Handler) listDataStoreItems() (DsItems, error) {
 			break
 		}
 		key := kv.GetKey()
-		item := &model.PeerConf{}
+		item := &model.BgpConf{}
 		err := kv.GetValue(item)
 		if err != nil {
 			h.Log.WithField("Key", key).
-				Errorf("bgp config handler failed to get PeerConf from data store, error %s", err)
+				Errorf("bgp config handle failed to get object from data store, error %s", err)
 		} else {
 			dsDump[key] = item
 		}
@@ -362,47 +338,30 @@ func (h *Handler) syncDataStoreWithK8sCache(dsItems DsItems) error {
 //
 // If data can not be written into the data store, mark-and-sweep is aborted
 // and the function returns an error.
-func (h *Handler) markAndSweep(dsItems DsItems) error {
-	for _, key := range h.ControllerInformer.Informer().GetStore().ListKeys() {
-		k8sProtoObj, _, err := h.ControllerInformer.Informer().GetStore().GetByKey(key)
-		if err != nil {
-			return fmt.Errorf("failed to get '%s' from k8s cache", key)
-		}
-
-		if key == model.Key(h.name)+"/global" {
-			k8sConfig, ok := k8sProtoObj.(v1.GlobalConf)
-			if !ok {
-				h.Log.Warn("Failed to cast newly created GlobalConf object")
-			}
-			k8sProtoObj = h.bgpGlobalConfigToProto(k8sConfig)
-		} else {
-			k8sConfig, ok := k8sProtoObj.(v1.PeerConf)
-			if !ok {
-				h.Log.Warn("Failed to cast newly created PeerConf object")
-			}
-			k8sProtoObj = h.bgpPeersConfigToProto(k8sConfig)
-		}
-
-		dsProtoObj, exists := dsItems[key]
-		if exists {
-			if !reflect.DeepEqual(k8sProtoObj, dsProtoObj) {
-				// Object exists in the data store, but it changed in the
-				// K8s cache; overwrite the data store
+func (h *Handler) markAndSweep(dsItems DsItems, oc K8sToProtoConverter) error {
+	for _, obj := range h.ControllerInformer.Informer().GetStore().List() {
+		k8sProtoObj, key, ok := oc(obj)
+		if ok {
+			dsProtoObj, exists := dsItems[key]
+			if exists {
+				if !reflect.DeepEqual(k8sProtoObj, dsProtoObj) {
+					// Object exists in the data store, but it changed in the
+					// K8s cache; overwrite the data store
+					err := h.broker.Put(key, k8sProtoObj.(proto.Message))
+					if err != nil {
+						return fmt.Errorf("update for key '%s' failed", key)
+					}
+				}
+			} else {
+				// Object does not exist in the data store, but it exists in
+				// the K8s cache; create object in the data store
 				err := h.broker.Put(key, k8sProtoObj.(proto.Message))
 				if err != nil {
-					return fmt.Errorf("update for key '%s' failed", key)
+					return fmt.Errorf("add for key '%s' failed", key)
 				}
 			}
-		} else {
-			// Object does not exist in the data store, but it exists in
-			// the K8s cache; create object in the data store
-			err := h.broker.Put(key, k8sProtoObj.(proto.Message))
-			if err != nil {
-				return fmt.Errorf("add for key '%s' failed", key)
-			}
+			delete(dsItems, key)
 		}
-		delete(dsItems, key)
-
 	}
 
 	// Delete from data store all objects that no longer exist in the K8s
