@@ -96,14 +96,14 @@ func (h *Handler) Init() error {
 	h.syncStopCh = make(chan bool, 1)
 	h.prefix = model.KeyPrefix()
 
-		h.kpc = func(obj interface{}) (interface{}, string, bool) {
-			bgpConfig, ok := obj.(*v1.BgpConfig)
-			if !ok {
-				h.Log.Warn("Failed to cast newly created node-config object")
-				return nil, "", false
-			}
-			return h.bgpConfigToProto(bgpConfig), model.Key(bgpConfig.Name), true
+	h.kpc = func(obj interface{}) (interface{}, string, bool) {
+		bgpConfig, ok := obj.(*v1.BgpConfig)
+		if !ok {
+			h.Log.Warn("Failed to cast newly created node-config object")
+			return nil, "", false
 		}
+		return h.bgpConfigToProto(bgpConfig), model.Key(bgpConfig.Name), true
+	}
 
 	return nil
 }
@@ -318,7 +318,7 @@ func (h *Handler) syncDataStoreWithK8sCache(dsItems DsItems) error {
 	}
 
 	// Reconcile data store with k8s cache using mark-and-sweep
-	err := h.markAndSweep(dsItems)
+	err := h.markAndSweep(dsItems, h.kpc)
 	if err != nil {
 		return fmt.Errorf("bgp config data sync: mark-and-sweep failed, '%s'", err)
 	}
