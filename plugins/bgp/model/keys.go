@@ -4,29 +4,20 @@ package model
 
 import (
 	"github.com/contiv/vpp/plugins/ksr/model/ksrkey"
+	"github.com/ligato/vpp-agent/pkg/models"
 )
 
-/*const ModuleName = "bgp"
+const ModuleName = "bgp"
 
 var (
-	ModelBgpGlobal = models.Register(&GlobalConf{}, models.Spec{
+	ModelBgpConf = models.Register(&BgpConf{}, models.Spec{
 		Module:  ModuleName,
 		Version: "v1",
-		Type:    "global",
-	})
-	ModelBgpPeer = models.Register(&PeerConf{}, models.Spec{
-		Module:  ModuleName,
-		Version: "v1",
-		Type:    "peers",
+		Type:    "bgpconf",
 	}, models.WithNameTemplate("{{.Name}}"))
 )
 
-//given the peer name, this function will return the key
-func PeerKey(name string) string {
-	return models.Key(&PeerConf{
-		Name: name,
-	})
-}*/
+
 
 // Keyword defines the keyword identifying NodeConfig data.
 const Keyword = "bgpconfig"
@@ -40,9 +31,3 @@ func KeyPrefix() string {
 func Key(conf string) string {
 	return KeyPrefix() + conf
 }
-
-/*func GlobalKey(name string) string {
-	return models.Key(&GlobalConf{
-		Name: name,
-	})
-}*/
