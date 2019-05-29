@@ -4,6 +4,7 @@ package model
 
 import (
 	"github.com/contiv/vpp/plugins/ksr/model/ksrkey"
+	"github.com/ligato/vpp-agent/pkg/models"
 )
 
 /*const ModuleName = "bgp"
@@ -27,6 +28,17 @@ func PeerKey(name string) string {
 		Name: name,
 	})
 }*/
+const ModuleName = "bgp"
+
+var (
+	ModelBgpConf = models.Register(&BgpConf{}, models.Spec{
+		Module:  ModuleName,
+		Version: "v1",
+		Type:    "bgpconf",
+	}, models.WithNameTemplate("{{.Name}}"))
+)
+
+
 
 // Keyword defines the keyword identifying NodeConfig data.
 const Keyword = "bgpconfig"

@@ -29,10 +29,10 @@ func NewBgpConfDescriptor(log logging.PluginLogger, server *gobgp.BgpServer, has
 	// Set plugin descriptor init values
 	gcd := &adapter.BgpConfDescriptor{
 		Name:        bgpDescriptorName,
-		NBKeyPrefix: model.KeyPrefix(),
-		//ValueTypeName: model.ProtoName(),
-		//KeySelector:   model.IsKeyValid,
-		//KeyLabel:      model.StripKeyPrefix,
+		NBKeyPrefix: model.ModelBgpConf.KeyPrefix(),
+		ValueTypeName: model.ModelBgpConf.KeyPrefix(),
+		KeySelector:   model.ModelBgpConf.IsKeyValid,
+		KeyLabel:      model.ModelBgpConf.StripKeyPrefix,
 		Create: d.Create,
 		Delete: d.Delete,
 		UpdateWithRecreate: func(key string, oldValue, newValue *model.BgpConf, metadata interface{}) bool {
