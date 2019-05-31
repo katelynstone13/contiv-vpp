@@ -66,11 +66,8 @@ func (p *BgpPlugin) Init() error {
 	p.nextHopMap = make(map[uint32]string)
 	p.hasConfigChan = make(chan bool)
 
-	gd := descriptor.NewBgpConfDescriptor(p.Log, p.BGPServer, p.hasConfigChan)
-	p.KVScheduler.RegisterKVDescriptor(gd)
-
-	/*pd := descriptor.NewPeerConfDescriptor(p.Log, p.BGPServer)
-	p.KVScheduler.RegisterKVDescriptor(pd)*/
+	bd := descriptor.NewBgpConfDescriptor(p.Log, p.BGPServer, p.hasConfigChan)
+	p.KVScheduler.RegisterKVDescriptor(bd)
 
 	p.watchCloser = make(chan string)
 

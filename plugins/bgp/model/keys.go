@@ -17,8 +17,6 @@ var (
 	}, models.WithNameTemplate("{{.Name}}"))
 )
 
-
-
 // Keyword defines the keyword identifying NodeConfig data.
 const Keyword = "bgpconfig"
 
