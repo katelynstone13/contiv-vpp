@@ -19,8 +19,6 @@ var (
 )
 
 
-
-
 // Keyword defines the keyword identifying NodeConfig data.
 const Keyword = "bgpconfig"
 
