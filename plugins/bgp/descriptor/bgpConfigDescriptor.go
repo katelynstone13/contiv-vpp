@@ -30,7 +30,7 @@ func NewBgpConfDescriptor(log logging.PluginLogger, server *gobgp.BgpServer, has
 	gcd := &adapter.BgpConfDescriptor{
 		Name:        bgpDescriptorName,
 		NBKeyPrefix: model.ModelBgpConf.KeyPrefix(),
-		ValueTypeName: model.ModelBgpConf.KeyPrefix(),
+		ValueTypeName: model.ModelBgpConf.ProtoName(),
 		KeySelector:   model.ModelBgpConf.IsKeyValid,
 		KeyLabel:      model.ModelBgpConf.StripKeyPrefix,
 		Create: d.Create,
