@@ -201,6 +201,7 @@ func (h *Handler) bgpGlobalConfigToProto(bgpGlobalConfig v1.GlobalConf) *model.G
 	bgpGlobalConfigProto.ListenAddresses = bgpGlobalConfig.ListenAddresses
 	bgpGlobalConfigProto.RouterId = bgpGlobalConfig.RouterId
 	bgpGlobalConfigProto.UseMultiplePaths = bgpGlobalConfig.UseMultiplePaths
+	bgpGlobalConfigProto.ListenPort = bgpGlobalConfig.ListenPort
 
 	return bgpGlobalConfigProto
 

@@ -18,6 +18,7 @@ import (
 	"github.com/ligato/cn-infra/datasync"
 	"github.com/ligato/cn-infra/db/keyval"
 	"github.com/ligato/cn-infra/infra"
+	"github.com/ligato/cn-infra/servicelabel"
 	"github.com/ligato/cn-infra/rpc/rest"
 	kvs "github.com/ligato/vpp-agent/plugins/kvscheduler/api"
 	bgp_api "github.com/osrg/gobgp/api"
@@ -44,6 +45,7 @@ type Deps struct {
 	infra.PluginDeps
 	Rest        *rest.Plugin
 	BGPServer   *gobgp.BgpServer
+	ServiceLabel servicelabel.ReaderAPI
 	KVScheduler kvs.KVScheduler
 	KVStore     keyval.KvProtoPlugin
 }
@@ -65,6 +67,7 @@ func (p *BgpPlugin) Init() error {
 	p.nlriMap = make(map[uint32]*any.Any)
 	p.nextHopMap = make(map[uint32]string)
 	p.hasConfigChan = make(chan bool)
+	_ = p.ServiceLabel.GetAgentLabel()
 
 	bd := descriptor.NewBgpConfDescriptor(p.Log, p.BGPServer, p.hasConfigChan)
 	p.KVScheduler.RegisterKVDescriptor(bd)

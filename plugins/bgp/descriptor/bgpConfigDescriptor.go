@@ -54,16 +54,19 @@ func (d *BgpDescriptor) Create(key string, value *model.BgpConf) (metadata inter
 		d.log.Errorf("Invalid IP Address for RouterId = %s", globalConf.RouterId)
 		return nil, err
 	}
+	d.log.Info("parsed IP global descriptor")
 	//Checks if AS is above 64512 and below 65536
 	if globalConf.As < 64512 || globalConf.As > 65536 {
 		d.log.Errorf("Invalid AS Number = %d. AS Number should be above 64512 and below 65536", globalConf.As)
 		return nil, err
 	}
+	d.log.Info("parsed AS global descriptor")
 	//Checks if ListenPort is -1
 	if globalConf.ListenPort != -1 {
 		d.log.Errorf("Invalid ListenPort = %d. ListenPort should be -1", globalConf.ListenPort)
 		return nil, err
 	}
+	d.log.Info("parsed ListenPort global descriptor")
 	d.log.Infof("Creating GlobalConf As = %d, RouterId = %s, ListenPort = %d",
 		globalConf.As, globalConf.RouterId, globalConf.ListenPort)
 	err = d.server.StartBgp(context.Background(), &bgpapi.StartBgpRequest{
@@ -80,13 +83,13 @@ func (d *BgpDescriptor) Create(key string, value *model.BgpConf) (metadata inter
 			d.log.Errorf("Invalid IP Address for NeighborAddress = %s", nextPeer.NeighborAddress)
 			return nil, err
 		}
+		d.log.Debug("parsed IP peer descriptor")
 		//Checks if AS is above 64512 and below 65536
 		if nextPeer.PeerAs < 64512 || nextPeer.PeerAs > 65536 {
 			d.log.Errorf("Invalid AS Number = %d. AS Number should be above 64512 and below 65536", nextPeer.PeerAs)
 			return nil, err
 		}
-		d.log.Infof("Creating Peer %s,  neighbor_address = %s, peer_as = %d",
-			nextPeer.Name, nextPeer.NeighborAddress, nextPeer.PeerAs)
+		d.log.Debug("parsed AS peer descriptor")
 		n := &bgpapi.Peer{
 			Conf: &bgpapi.PeerConf{
 				NeighborAddress: nextPeer.NeighborAddress,
@@ -118,7 +121,7 @@ func (d *BgpDescriptor) Delete(key string, value *model.BgpConf, metadata interf
 
 	/*DELETING PEERS*/
 	for _, nextPeer := range peersConf {
-		d.log.Infof("Deleting Peer %s", nextPeer.Name)
+		//d.log.Infof("Deleting Peer %s", nextPeer.Name)
 		err = d.server.DeletePeer(context.Background(), &bgpapi.DeletePeerRequest{
 			Address: nextPeer.NeighborAddress,
 		})

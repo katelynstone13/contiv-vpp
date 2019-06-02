@@ -3,6 +3,7 @@ package bgp
 import (
 	"github.com/ligato/cn-infra/db/keyval/etcd"
 	"github.com/ligato/cn-infra/rpc/rest"
+	"github.com/ligato/cn-infra/servicelabel"
 	"github.com/ligato/vpp-agent/plugins/kvscheduler"
 )
 
@@ -16,7 +17,7 @@ func NewPlugin(opts ...Option) *BgpPlugin {
 	p.PluginName = "bgp-plugin"
 	p.Rest = &rest.DefaultPlugin
 	p.KVScheduler = &kvscheduler.DefaultPlugin
-
+	p.ServiceLabel = &servicelabel.DefaultPlugin
 	p.KVStore = &etcd.DefaultPlugin
 	p.Setup()
 
